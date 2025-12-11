@@ -27,7 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-background antialiased">
         <main
-          className="mx-auto min-h-screen max-w-lg"
+          className="mx-auto min-h-screen max-w-lg overflow-x-hidden"
           style={{
             paddingBottom: "calc(4rem + env(safe-area-inset-bottom, 0px))",
           }}

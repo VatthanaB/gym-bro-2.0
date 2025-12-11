@@ -821,12 +821,41 @@ export function useWorkoutLogs() {
     [logs]
   );
 
+  const getLogByDate = useCallback(
+    (date: string) => {
+      return logs.find((log) => log.date === date);
+    },
+    [logs]
+  );
+
+  const deleteLog = useCallback(
+    async (id: string) => {
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("workout_logs")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error deleting workout log:", error);
+        return;
+      }
+
+      setLogs((prev) => prev.filter((log) => log.id !== id));
+    },
+    [user, supabase]
+  );
+
   return {
     logs,
     setLogs,
     addLog,
     updateLog,
+    deleteLog,
     getTodayLog,
+    getLogByDate,
     getLogsByDateRange,
     isLoaded,
   };
@@ -1061,6 +1090,312 @@ export function useUserMeals() {
     removeFoodFromMeal,
     resetMeal,
     resetAllMeals,
+    isLoaded,
+  };
+}
+
+// =============================================
+// USER WORKOUT CUSTOMIZATIONS HOOK
+// =============================================
+
+export interface SwappedExercise {
+  originalId: string;
+  replacementId: string;
+}
+
+export interface WorkoutCustomization {
+  dayOfWeek: number;
+  weekStart: string;
+  swappedExercises: SwappedExercise[];
+  addedExercises: string[];
+}
+
+interface DBWorkoutCustomization {
+  id: string;
+  user_id: string;
+  day_of_week: number;
+  week_start: string;
+  swapped_exercises: SwappedExercise[];
+  added_exercises: string[];
+}
+
+// Helper to get the start of a week (Sunday) for a given date
+export function getWeekStart(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d.toISOString().split("T")[0];
+}
+
+export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
+  const [customizations, setCustomizations] = useState<
+    Record<number, WorkoutCustomization>
+  >({});
+  const [isLoaded, setIsLoaded] = useState(false);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  // Default to current week if not specified
+  const weekStart = selectedWeekStart || getWeekStart(new Date());
+
+  useEffect(() => {
+    if (!user) {
+      queueMicrotask(() => setIsLoaded(true));
+      return;
+    }
+
+    async function fetchCustomizations() {
+      const { data, error } = await supabase
+        .from("user_workout_customizations")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("week_start", weekStart);
+
+      if (error) {
+        console.error("Error fetching workout customizations:", error);
+        setIsLoaded(true);
+        return;
+      }
+
+      const dbCustomizations = (data as DBWorkoutCustomization[]) || [];
+      const transformed: Record<number, WorkoutCustomization> = {};
+
+      dbCustomizations.forEach((c) => {
+        transformed[c.day_of_week] = {
+          dayOfWeek: c.day_of_week,
+          weekStart: c.week_start,
+          swappedExercises: c.swapped_exercises || [],
+          addedExercises: c.added_exercises || [],
+        };
+      });
+
+      setCustomizations(transformed);
+      setIsLoaded(true);
+    }
+
+    fetchCustomizations();
+  }, [user, supabase, weekStart]);
+
+  const swapExercise = useCallback(
+    async (dayOfWeek: number, originalId: string, replacementId: string) => {
+      if (!user) return;
+
+      const existing = customizations[dayOfWeek];
+      const currentSwaps = existing?.swappedExercises || [];
+
+      // Remove any existing swap for this original exercise, then add new one
+      const filteredSwaps = currentSwaps.filter(
+        (s) => s.originalId !== originalId
+      );
+      const newSwaps = [...filteredSwaps, { originalId, replacementId }];
+
+      const { error } = await supabase
+        .from("user_workout_customizations")
+        .upsert(
+          {
+            user_id: user.id,
+            day_of_week: dayOfWeek,
+            week_start: weekStart,
+            swapped_exercises: newSwaps,
+            added_exercises: existing?.addedExercises || [],
+          },
+          {
+            onConflict: "user_id,day_of_week,week_start",
+          }
+        );
+
+      if (error) {
+        console.error("Error swapping exercise:", error);
+        return;
+      }
+
+      setCustomizations((prev) => ({
+        ...prev,
+        [dayOfWeek]: {
+          dayOfWeek,
+          weekStart,
+          swappedExercises: newSwaps,
+          addedExercises: existing?.addedExercises || [],
+        },
+      }));
+    },
+    [user, supabase, weekStart, customizations]
+  );
+
+  const addExercise = useCallback(
+    async (dayOfWeek: number, exerciseId: string) => {
+      if (!user) return;
+
+      const existing = customizations[dayOfWeek];
+      const currentAdded = existing?.addedExercises || [];
+
+      // Don't add duplicates
+      if (currentAdded.includes(exerciseId)) return;
+
+      const newAdded = [...currentAdded, exerciseId];
+
+      const { error } = await supabase
+        .from("user_workout_customizations")
+        .upsert(
+          {
+            user_id: user.id,
+            day_of_week: dayOfWeek,
+            week_start: weekStart,
+            swapped_exercises: existing?.swappedExercises || [],
+            added_exercises: newAdded,
+          },
+          {
+            onConflict: "user_id,day_of_week,week_start",
+          }
+        );
+
+      if (error) {
+        console.error("Error adding exercise:", error);
+        return;
+      }
+
+      setCustomizations((prev) => ({
+        ...prev,
+        [dayOfWeek]: {
+          dayOfWeek,
+          weekStart,
+          swappedExercises: existing?.swappedExercises || [],
+          addedExercises: newAdded,
+        },
+      }));
+    },
+    [user, supabase, weekStart, customizations]
+  );
+
+  const removeAddedExercise = useCallback(
+    async (dayOfWeek: number, exerciseId: string) => {
+      if (!user) return;
+
+      const existing = customizations[dayOfWeek];
+      if (!existing) return;
+
+      const newAdded = existing.addedExercises.filter(
+        (id) => id !== exerciseId
+      );
+
+      const { error } = await supabase
+        .from("user_workout_customizations")
+        .upsert(
+          {
+            user_id: user.id,
+            day_of_week: dayOfWeek,
+            week_start: weekStart,
+            swapped_exercises: existing.swappedExercises,
+            added_exercises: newAdded,
+          },
+          {
+            onConflict: "user_id,day_of_week,week_start",
+          }
+        );
+
+      if (error) {
+        console.error("Error removing added exercise:", error);
+        return;
+      }
+
+      setCustomizations((prev) => ({
+        ...prev,
+        [dayOfWeek]: {
+          ...existing,
+          addedExercises: newAdded,
+        },
+      }));
+    },
+    [user, supabase, weekStart, customizations]
+  );
+
+  const resetDayCustomizations = useCallback(
+    async (dayOfWeek: number) => {
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("user_workout_customizations")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("day_of_week", dayOfWeek)
+        .eq("week_start", weekStart);
+
+      if (error) {
+        console.error("Error resetting day customizations:", error);
+        return;
+      }
+
+      setCustomizations((prev) => {
+        const newCustomizations = { ...prev };
+        delete newCustomizations[dayOfWeek];
+        return newCustomizations;
+      });
+    },
+    [user, supabase, weekStart]
+  );
+
+  const getCustomizedWorkout = useCallback(
+    (template: WorkoutTemplate, allExercises: Exercise[]): WorkoutTemplate => {
+      const customization = customizations[template.dayOfWeek];
+      if (!customization) return template;
+
+      // Apply swaps
+      let exercises = template.exercises.map((ex) => {
+        const swap = customization.swappedExercises.find(
+          (s) => s.originalId === ex.id
+        );
+        if (swap) {
+          const replacement = allExercises.find(
+            (e) => e.id === swap.replacementId
+          );
+          if (replacement) {
+            return { ...replacement, _swappedFrom: ex.id };
+          }
+        }
+        return ex;
+      });
+
+      // Apply additions
+      const addedExercises = customization.addedExercises
+        .map((id) => allExercises.find((e) => e.id === id))
+        .filter((e): e is Exercise => e !== undefined)
+        .map((e) => ({ ...e, _isAdded: true }));
+
+      exercises = [...exercises, ...addedExercises];
+
+      return { ...template, exercises };
+    },
+    [customizations]
+  );
+
+  const getDayCustomization = useCallback(
+    (dayOfWeek: number): WorkoutCustomization | undefined => {
+      return customizations[dayOfWeek];
+    },
+    [customizations]
+  );
+
+  const hasCustomizations = useCallback(
+    (dayOfWeek: number): boolean => {
+      const c = customizations[dayOfWeek];
+      return !!(
+        c &&
+        (c.swappedExercises.length > 0 || c.addedExercises.length > 0)
+      );
+    },
+    [customizations]
+  );
+
+  return {
+    customizations,
+    swapExercise,
+    addExercise,
+    removeAddedExercise,
+    resetDayCustomizations,
+    getCustomizedWorkout,
+    getDayCustomization,
+    hasCustomizations,
+    weekStart,
     isLoaded,
   };
 }
