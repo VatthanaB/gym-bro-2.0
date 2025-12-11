@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingPage } from "@/components/ui/loading";
 import { MealConfigSection } from "@/components/meal-config-section";
 import { AddIngredientForm } from "@/components/add-ingredient-form";
+import { IngredientManagementSection } from "@/components/ingredient-management-section";
 import {
   MealOptionEditor,
   DeleteConfirmDialog,
@@ -166,7 +167,7 @@ export default function MealSettingsPage() {
             Meal Settings
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Configure meal options and add new ingredients
+            Configure meal options, manage ingredients, and control availability
           </p>
         </div>
       </header>
@@ -222,7 +223,21 @@ export default function MealSettingsPage() {
         </Card>
       </section>
 
-      {/* Section 2: Add New Ingredient */}
+      {/* Section 2: Ingredient Management */}
+      <section className="mb-8">
+        <h2 className="mb-4 text-xl font-semibold text-foreground">
+          Ingredient Management
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          View, edit, and manage all ingredients. Toggle visibility to control
+          what appears in meal swaps, and assign ingredients to multiple meal
+          categories.
+        </p>
+
+        <IngredientManagementSection />
+      </section>
+
+      {/* Section 3: Add New Ingredient */}
       <section>
         <h2 className="mb-4 text-xl font-semibold text-foreground">
           Add Custom Ingredient

@@ -331,6 +331,7 @@ interface DBFood {
   portion: string;
   category: string;
   food_bank_category: string;
+  is_enabled?: boolean;
 }
 
 interface DBCustomFood {
@@ -347,20 +348,39 @@ interface DBCustomFood {
   category: string;
   food_bank_category: string;
   created_at: string;
+  is_enabled?: boolean;
+}
+
+interface DBFoodCategoryAssignment {
+  id: string;
+  food_id: string;
+  food_source: "foods" | "custom_foods";
+  category: string;
+}
+
+// Extended Food type for admin management (includes metadata)
+export interface ExtendedFood extends Food {
+  foodBankCategory: string;
+  source: "foods" | "custom_foods";
+  isEnabled: boolean;
+  additionalCategories: string[];
 }
 
 export function useFoods() {
   const [foods, setFoods] = useState<Food[]>([]);
   const [foodBank, setFoodBank] = useState<Record<string, Food[]>>({});
+  const [allFoodsForAdmin, setAllFoodsForAdmin] = useState<ExtendedFood[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const supabase = createClient();
 
   const fetchFoods = useCallback(async () => {
-    // Fetch both regular foods and custom foods in parallel
-    const [foodsResult, customFoodsResult] = await Promise.all([
-      supabase.from("foods").select("*"),
-      supabase.from("custom_foods").select("*"),
-    ]);
+    // Fetch foods, custom foods, and category assignments in parallel
+    const [foodsResult, customFoodsResult, categoryAssignmentsResult] =
+      await Promise.all([
+        supabase.from("foods").select("*"),
+        supabase.from("custom_foods").select("*"),
+        supabase.from("food_category_assignments").select("*"),
+      ]);
 
     if (foodsResult.error) {
       console.error("Error fetching foods:", foodsResult.error);
@@ -374,48 +394,36 @@ export function useFoods() {
       console.error("Error fetching custom foods:", customFoodsResult.error);
     }
 
+    // Category assignments might not exist yet
+    if (
+      categoryAssignmentsResult.error &&
+      !categoryAssignmentsResult.error.message.includes("does not exist")
+    ) {
+      console.error(
+        "Error fetching category assignments:",
+        categoryAssignmentsResult.error
+      );
+    }
+
     const dbFoods = (foodsResult.data as DBFood[]) || [];
     const dbCustomFoods = (customFoodsResult.data as DBCustomFood[]) || [];
+    const categoryAssignments =
+      (categoryAssignmentsResult.data as DBFoodCategoryAssignment[]) || [];
 
-    // Transform regular foods
-    const transformedFoods: Food[] = dbFoods.map((f) => ({
-      id: f.id,
-      name: f.name,
-      calories: f.calories,
-      protein: f.protein,
-      carbs: f.carbs,
-      fat: f.fat,
-      portion: f.portion,
-      category: f.category as Food["category"],
-    }));
-
-    // Transform custom foods
-    const transformedCustomFoods: Food[] = dbCustomFoods.map((f) => ({
-      id: f.id,
-      name: f.name,
-      calories: f.calories,
-      protein: Number(f.protein),
-      carbs: Number(f.carbs),
-      fat: Number(f.fat),
-      portion: f.portion,
-      rawWeight: f.raw_weight ?? undefined,
-      cookedWeight: f.cooked_weight ?? undefined,
-      category: f.category as Food["category"],
-    }));
-
-    // Combine all foods
-    const allFoods = [...transformedFoods, ...transformedCustomFoods];
-    setFoods(allFoods);
-
-    // Group by food_bank_category (include both regular and custom)
-    const grouped: Record<string, Food[]> = {};
-
-    // Add regular foods to groups
-    dbFoods.forEach((f) => {
-      if (!grouped[f.food_bank_category]) {
-        grouped[f.food_bank_category] = [];
+    // Build a map of additional categories per food
+    const additionalCategoriesMap: Record<string, string[]> = {};
+    categoryAssignments.forEach((assignment) => {
+      const key = `${assignment.food_source}:${assignment.food_id}`;
+      if (!additionalCategoriesMap[key]) {
+        additionalCategoriesMap[key] = [];
       }
-      grouped[f.food_bank_category].push({
+      additionalCategoriesMap[key].push(assignment.category);
+    });
+
+    // Transform regular foods (only enabled ones for normal use)
+    const transformedFoods: Food[] = dbFoods
+      .filter((f) => f.is_enabled !== false)
+      .map((f) => ({
         id: f.id,
         name: f.name,
         calories: f.calories,
@@ -424,15 +432,12 @@ export function useFoods() {
         fat: f.fat,
         portion: f.portion,
         category: f.category as Food["category"],
-      });
-    });
+      }));
 
-    // Add custom foods to groups
-    dbCustomFoods.forEach((f) => {
-      if (!grouped[f.food_bank_category]) {
-        grouped[f.food_bank_category] = [];
-      }
-      grouped[f.food_bank_category].push({
+    // Transform custom foods (only enabled ones for normal use)
+    const transformedCustomFoods: Food[] = dbCustomFoods
+      .filter((f) => f.is_enabled !== false)
+      .map((f) => ({
         id: f.id,
         name: f.name,
         calories: f.calories,
@@ -443,8 +448,106 @@ export function useFoods() {
         rawWeight: f.raw_weight ?? undefined,
         cookedWeight: f.cooked_weight ?? undefined,
         category: f.category as Food["category"],
+      }));
+
+    // Combine all enabled foods
+    const allFoods = [...transformedFoods, ...transformedCustomFoods];
+    setFoods(allFoods);
+
+    // Build extended foods list for admin (includes all foods with metadata)
+    const extendedFoods: ExtendedFood[] = [
+      ...dbFoods.map((f) => ({
+        id: f.id,
+        name: f.name,
+        calories: f.calories,
+        protein: f.protein,
+        carbs: f.carbs,
+        fat: f.fat,
+        portion: f.portion,
+        category: f.category as Food["category"],
+        foodBankCategory: f.food_bank_category,
+        source: "foods" as const,
+        isEnabled: f.is_enabled !== false,
+        additionalCategories: additionalCategoriesMap[`foods:${f.id}`] || [],
+      })),
+      ...dbCustomFoods.map((f) => ({
+        id: f.id,
+        name: f.name,
+        calories: f.calories,
+        protein: Number(f.protein),
+        carbs: Number(f.carbs),
+        fat: Number(f.fat),
+        portion: f.portion,
+        rawWeight: f.raw_weight ?? undefined,
+        cookedWeight: f.cooked_weight ?? undefined,
+        category: f.category as Food["category"],
+        foodBankCategory: f.food_bank_category,
+        source: "custom_foods" as const,
+        isEnabled: f.is_enabled !== false,
+        additionalCategories:
+          additionalCategoriesMap[`custom_foods:${f.id}`] || [],
+      })),
+    ];
+    setAllFoodsForAdmin(extendedFoods);
+
+    // Group by food_bank_category (include both regular and custom, only enabled)
+    const grouped: Record<string, Food[]> = {};
+
+    // Helper to add food to a category group
+    const addToGroup = (category: string, food: Food) => {
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      // Avoid duplicates
+      if (!grouped[category].some((f) => f.id === food.id)) {
+        grouped[category].push(food);
+      }
+    };
+
+    // Add regular foods to groups (primary category + additional categories)
+    dbFoods
+      .filter((f) => f.is_enabled !== false)
+      .forEach((f) => {
+        const food: Food = {
+          id: f.id,
+          name: f.name,
+          calories: f.calories,
+          protein: f.protein,
+          carbs: f.carbs,
+          fat: f.fat,
+          portion: f.portion,
+          category: f.category as Food["category"],
+        };
+        // Add to primary category
+        addToGroup(f.food_bank_category, food);
+        // Add to additional categories
+        const additionalCats = additionalCategoriesMap[`foods:${f.id}`] || [];
+        additionalCats.forEach((cat) => addToGroup(cat, food));
       });
-    });
+
+    // Add custom foods to groups (primary category + additional categories)
+    dbCustomFoods
+      .filter((f) => f.is_enabled !== false)
+      .forEach((f) => {
+        const food: Food = {
+          id: f.id,
+          name: f.name,
+          calories: f.calories,
+          protein: Number(f.protein),
+          carbs: Number(f.carbs),
+          fat: Number(f.fat),
+          portion: f.portion,
+          rawWeight: f.raw_weight ?? undefined,
+          cookedWeight: f.cooked_weight ?? undefined,
+          category: f.category as Food["category"],
+        };
+        // Add to primary category
+        addToGroup(f.food_bank_category, food);
+        // Add to additional categories
+        const additionalCats =
+          additionalCategoriesMap[`custom_foods:${f.id}`] || [];
+        additionalCats.forEach((cat) => addToGroup(cat, food));
+      });
 
     setFoodBank(grouped);
     setIsLoaded(true);
@@ -465,7 +568,7 @@ export function useFoods() {
     };
   }, [fetchFoods]);
 
-  return { foods, foodBank, isLoaded, refetch: fetchFoods };
+  return { foods, foodBank, allFoodsForAdmin, isLoaded, refetch: fetchFoods };
 }
 
 // =============================================
@@ -514,6 +617,8 @@ export function validateMacros(food: CustomFoodInput): {
 
 export function useCustomFoods() {
   const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const supabase = createClient();
@@ -584,11 +689,355 @@ export function useCustomFoods() {
     [user, supabase]
   );
 
+  const updateCustomFood = useCallback(
+    async (id: string, food: Partial<CustomFoodInput>): Promise<boolean> => {
+      if (!user) {
+        setError("You must be logged in to update foods");
+        return false;
+      }
+
+      setIsUpdating(true);
+      setError(null);
+
+      try {
+        const updateData: Record<string, unknown> = {};
+        if (food.name !== undefined) updateData.name = food.name;
+        if (food.calories !== undefined) updateData.calories = food.calories;
+        if (food.protein !== undefined) updateData.protein = food.protein;
+        if (food.carbs !== undefined) updateData.carbs = food.carbs;
+        if (food.fat !== undefined) updateData.fat = food.fat;
+        if (food.portion !== undefined) updateData.portion = food.portion;
+        if (food.rawWeight !== undefined)
+          updateData.raw_weight = food.rawWeight;
+        if (food.cookedWeight !== undefined)
+          updateData.cooked_weight = food.cookedWeight;
+        if (food.category !== undefined) updateData.category = food.category;
+        if (food.foodBankCategory !== undefined)
+          updateData.food_bank_category = food.foodBankCategory;
+
+        const { error: updateError } = await supabase
+          .from("custom_foods")
+          .update(updateData)
+          .eq("id", id);
+
+        if (updateError) {
+          if (updateError.message.includes("policy")) {
+            setError(
+              "You don't have permission to update foods. Admin access required."
+            );
+          } else {
+            setError(updateError.message);
+          }
+          return false;
+        }
+
+        return true;
+      } catch (err) {
+        setError("Failed to update food");
+        console.error("Error updating custom food:", err);
+        return false;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [user, supabase]
+  );
+
+  const deleteCustomFood = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!user) {
+        setError("You must be logged in to delete foods");
+        return false;
+      }
+
+      setIsDeleting(true);
+      setError(null);
+
+      try {
+        const { error: deleteError } = await supabase
+          .from("custom_foods")
+          .delete()
+          .eq("id", id);
+
+        if (deleteError) {
+          if (deleteError.message.includes("policy")) {
+            setError(
+              "You don't have permission to delete foods. Admin access required."
+            );
+          } else {
+            setError(deleteError.message);
+          }
+          return false;
+        }
+
+        return true;
+      } catch (err) {
+        setError("Failed to delete food");
+        console.error("Error deleting custom food:", err);
+        return false;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [user, supabase]
+  );
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  return { addCustomFood, isAdding, error, clearError, validateMacros };
+  return {
+    addCustomFood,
+    updateCustomFood,
+    deleteCustomFood,
+    isAdding,
+    isUpdating,
+    isDeleting,
+    error,
+    clearError,
+    validateMacros,
+  };
+}
+
+// =============================================
+// INGREDIENT MANAGEMENT HOOK (Admin only)
+// =============================================
+
+export function useIngredientManagement() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  // Toggle food enabled/disabled status
+  const toggleFoodEnabled = useCallback(
+    async (
+      foodId: string,
+      source: "foods" | "custom_foods",
+      enabled: boolean
+    ): Promise<boolean> => {
+      if (!user) {
+        setError("You must be logged in");
+        return false;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const { error: updateError } = await supabase
+          .from(source)
+          .update({ is_enabled: enabled })
+          .eq("id", foodId);
+
+        if (updateError) {
+          if (updateError.message.includes("policy")) {
+            setError("You don't have permission. Admin access required.");
+          } else {
+            setError(updateError.message);
+          }
+          return false;
+        }
+
+        return true;
+      } catch (err) {
+        setError("Failed to update food status");
+        console.error("Error toggling food enabled:", err);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user, supabase]
+  );
+
+  // Update a food item (works for both foods and custom_foods tables)
+  const updateFood = useCallback(
+    async (
+      foodId: string,
+      source: "foods" | "custom_foods",
+      data: Partial<CustomFoodInput>
+    ): Promise<boolean> => {
+      if (!user) {
+        setError("You must be logged in");
+        return false;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const updateData: Record<string, unknown> = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.calories !== undefined) updateData.calories = data.calories;
+        if (data.protein !== undefined) updateData.protein = data.protein;
+        if (data.carbs !== undefined) updateData.carbs = data.carbs;
+        if (data.fat !== undefined) updateData.fat = data.fat;
+        if (data.portion !== undefined) updateData.portion = data.portion;
+        if (data.category !== undefined) updateData.category = data.category;
+        if (data.foodBankCategory !== undefined)
+          updateData.food_bank_category = data.foodBankCategory;
+
+        // Only custom_foods has these fields
+        if (source === "custom_foods") {
+          if (data.rawWeight !== undefined)
+            updateData.raw_weight = data.rawWeight;
+          if (data.cookedWeight !== undefined)
+            updateData.cooked_weight = data.cookedWeight;
+        }
+
+        const { error: updateError } = await supabase
+          .from(source)
+          .update(updateData)
+          .eq("id", foodId);
+
+        if (updateError) {
+          if (updateError.message.includes("policy")) {
+            setError("You don't have permission. Admin access required.");
+          } else {
+            setError(updateError.message);
+          }
+          return false;
+        }
+
+        return true;
+      } catch (err) {
+        setError("Failed to update food");
+        console.error("Error updating food:", err);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user, supabase]
+  );
+
+  // Delete a food item
+  const deleteFood = useCallback(
+    async (
+      foodId: string,
+      source: "foods" | "custom_foods"
+    ): Promise<boolean> => {
+      if (!user) {
+        setError("You must be logged in");
+        return false;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // First delete any category assignments for this food
+        await supabase
+          .from("food_category_assignments")
+          .delete()
+          .eq("food_id", foodId)
+          .eq("food_source", source);
+
+        // Then delete the food itself
+        const { error: deleteError } = await supabase
+          .from(source)
+          .delete()
+          .eq("id", foodId);
+
+        if (deleteError) {
+          if (deleteError.message.includes("policy")) {
+            setError("You don't have permission. Admin access required.");
+          } else {
+            setError(deleteError.message);
+          }
+          return false;
+        }
+
+        return true;
+      } catch (err) {
+        setError("Failed to delete food");
+        console.error("Error deleting food:", err);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user, supabase]
+  );
+
+  // Update category assignments for a food
+  const updateFoodCategories = useCallback(
+    async (
+      foodId: string,
+      source: "foods" | "custom_foods",
+      additionalCategories: string[]
+    ): Promise<boolean> => {
+      if (!user) {
+        setError("You must be logged in");
+        return false;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Delete existing category assignments for this food
+        const { error: deleteError } = await supabase
+          .from("food_category_assignments")
+          .delete()
+          .eq("food_id", foodId)
+          .eq("food_source", source);
+
+        if (deleteError && !deleteError.message.includes("does not exist")) {
+          console.error(
+            "Error deleting old category assignments:",
+            deleteError
+          );
+        }
+
+        // Insert new category assignments (if any)
+        if (additionalCategories.length > 0) {
+          const newAssignments = additionalCategories.map((category) => ({
+            food_id: foodId,
+            food_source: source,
+            category,
+          }));
+
+          const { error: insertError } = await supabase
+            .from("food_category_assignments")
+            .insert(newAssignments);
+
+          if (insertError) {
+            if (insertError.message.includes("policy")) {
+              setError("You don't have permission. Admin access required.");
+            } else {
+              setError(insertError.message);
+            }
+            return false;
+          }
+        }
+
+        return true;
+      } catch (err) {
+        setError("Failed to update food categories");
+        console.error("Error updating food categories:", err);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user, supabase]
+  );
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  return {
+    toggleFoodEnabled,
+    updateFood,
+    deleteFood,
+    updateFoodCategories,
+    isLoading,
+    error,
+    clearError,
+  };
 }
 
 interface DBMeal {
