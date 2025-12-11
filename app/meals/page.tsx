@@ -18,7 +18,7 @@ import {
   useMealOptions,
   DAILY_TARGETS,
 } from "@/lib/hooks/use-supabase";
-import type { MealSlot, Food } from "@/lib/types";
+import type { MealSlot, MealFood, Food } from "@/lib/types";
 
 const MEAL_ORDER: MealSlot[] = [
   "breakfast",
@@ -43,7 +43,7 @@ export default function MealsPage() {
 
   const [swapSheetOpen, setSwapSheetOpen] = useState(false);
   const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
-  const [tempFoods, setTempFoods] = useState<Food[]>([]);
+  const [tempFoods, setTempFoods] = useState<MealFood[]>([]);
 
   const isLoaded =
     mealsLoaded && foodsLoaded && prefsLoaded && profileLoaded && optionsLoaded;
@@ -81,7 +81,7 @@ export default function MealsPage() {
     setSwapSheetOpen(true);
   };
 
-  const handleSwapFood = (oldFoodId: string, newFood: Food) => {
+  const handleSwapFood = (oldFoodId: string, newFood: MealFood) => {
     setTempFoods((prev) => prev.map((f) => (f.id === oldFoodId ? newFood : f)));
     // Also immediately save the change
     if (activeSlot) {
@@ -94,7 +94,7 @@ export default function MealsPage() {
   };
 
   // Handle selecting a complete meal option (for breakfast/snacks)
-  const handleSelectMealOption = (foods: Food[]) => {
+  const handleSelectMealOption = (foods: MealFood[]) => {
     if (activeSlot) {
       updateMealFoods(activeSlot, foods);
       setTempFoods(foods);
@@ -214,7 +214,7 @@ export default function MealsPage() {
               </div>
               <div className="mb-2 flex items-baseline gap-1">
                 <span className="text-3xl font-bold text-foreground">
-                  {totalCalories}
+                  {Math.round(totalCalories)}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   / {DAILY_TARGETS.calories}
@@ -247,7 +247,7 @@ export default function MealsPage() {
               </div>
               <div className="mb-2 flex items-baseline gap-1">
                 <span className="text-3xl font-bold text-foreground">
-                  {totalProtein}g
+                  {Math.round(totalProtein)}g
                 </span>
                 <span className="text-sm text-muted-foreground">
                   / {DAILY_TARGETS.protein}g

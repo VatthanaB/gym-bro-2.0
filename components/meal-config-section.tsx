@@ -11,15 +11,15 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { Food, MealSlot } from "@/lib/types";
+import type { MealFood, MealSlot } from "@/lib/types";
 import type { MealOption } from "@/lib/hooks/use-supabase";
 
 interface MealConfigSectionProps {
   slot: MealSlot;
   label: string;
   mealOptions: MealOption[];
-  currentFoods: Food[];
-  onSelectOption: (foods: Food[]) => void;
+  currentFoods: MealFood[];
+  onSelectOption: (foods: MealFood[]) => void;
   onEditOption?: (option: MealOption) => void;
   onDeleteOption?: (option: MealOption) => void;
   onCreateOption?: () => void;
@@ -39,12 +39,16 @@ export function MealConfigSection({
 }: MealConfigSectionProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Check if current foods match a meal option
+  // Check if current foods match a meal option (compare id, quantity, and quantityType)
   const isCurrentOption = (option: MealOption) => {
     if (option.foods.length !== currentFoods.length) return false;
-    const currentIds = currentFoods.map((f) => f.id).sort();
-    const optionIds = option.foods.map((f) => f.id).sort();
-    return currentIds.every((id, i) => id === optionIds[i]);
+
+    // Create a key for each food: id-quantity-quantityType
+    const makeKey = (f: MealFood) => `${f.id}-${f.quantity}-${f.quantityType}`;
+    const currentKeys = currentFoods.map(makeKey).sort();
+    const optionKeys = option.foods.map(makeKey).sort();
+
+    return currentKeys.every((key, i) => key === optionKeys[i]);
   };
 
   // Find the currently selected option name

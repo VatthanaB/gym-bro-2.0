@@ -63,15 +63,14 @@ export function IngredientEditorSheet({
     clearError,
   } = useIngredientManagement();
 
-  // Form state
+  // Form state - all macros are per 100g
   const [name, setName] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [portion, setPortion] = useState("");
-  const [rawWeight, setRawWeight] = useState("");
-  const [cookedWeight, setCookedWeight] = useState("");
+  const [caloriesPer100g, setCaloriesPer100g] = useState("");
+  const [proteinPer100g, setProteinPer100g] = useState("");
+  const [carbsPer100g, setCarbsPer100g] = useState("");
+  const [fatPer100g, setFatPer100g] = useState("");
+  const [pieceWeightGrams, setPieceWeightGrams] = useState("");
+  const [pieceName, setPieceName] = useState("");
   const [category, setCategory] = useState<Food["category"]>("protein");
   const [primaryCategory, setPrimaryCategory] = useState("");
   const [additionalCategories, setAdditionalCategories] = useState<string[]>(
@@ -89,15 +88,14 @@ export function IngredientEditorSheet({
 
   if (shouldInitialize) {
     setName(ingredient!.name);
-    setCalories(String(ingredient!.calories));
-    setProtein(String(ingredient!.protein));
-    setCarbs(String(ingredient!.carbs));
-    setFat(String(ingredient!.fat));
-    setPortion(ingredient!.portion);
-    setRawWeight(ingredient!.rawWeight ? String(ingredient!.rawWeight) : "");
-    setCookedWeight(
-      ingredient!.cookedWeight ? String(ingredient!.cookedWeight) : ""
+    setCaloriesPer100g(String(ingredient!.caloriesPer100g));
+    setProteinPer100g(String(ingredient!.proteinPer100g));
+    setCarbsPer100g(String(ingredient!.carbsPer100g));
+    setFatPer100g(String(ingredient!.fatPer100g));
+    setPieceWeightGrams(
+      ingredient!.pieceWeightGrams ? String(ingredient!.pieceWeightGrams) : ""
     );
+    setPieceName(ingredient!.pieceName || "");
     setCategory(ingredient!.category);
     setPrimaryCategory(ingredient!.foodBankCategory);
     setAdditionalCategories(ingredient!.additionalCategories || []);
@@ -113,10 +111,10 @@ export function IngredientEditorSheet({
 
   // Validate macros using useMemo instead of useEffect
   const macroValidation = useMemo(() => {
-    const cal = parseFloat(calories);
-    const prot = parseFloat(protein);
-    const carb = parseFloat(carbs);
-    const fatVal = parseFloat(fat);
+    const cal = parseFloat(caloriesPer100g);
+    const prot = parseFloat(proteinPer100g);
+    const carb = parseFloat(carbsPer100g);
+    const fatVal = parseFloat(fatPer100g);
 
     if (
       !isNaN(cal) &&
@@ -127,17 +125,24 @@ export function IngredientEditorSheet({
     ) {
       return validateMacros({
         name,
-        calories: cal,
-        protein: prot,
-        carbs: carb,
-        fat: fatVal,
-        portion,
+        caloriesPer100g: cal,
+        proteinPer100g: prot,
+        carbsPer100g: carb,
+        fatPer100g: fatVal,
         category,
         foodBankCategory: primaryCategory,
       });
     }
     return null;
-  }, [calories, protein, carbs, fat, name, portion, category, primaryCategory]);
+  }, [
+    caloriesPer100g,
+    proteinPer100g,
+    carbsPer100g,
+    fatPer100g,
+    name,
+    category,
+    primaryCategory,
+  ]);
 
   const handleToggleAdditionalCategory = (cat: string) => {
     // Don't allow toggling the primary category
@@ -153,22 +158,17 @@ export function IngredientEditorSheet({
 
     const foodData: Partial<CustomFoodInput> = {
       name: name.trim(),
-      calories: parseInt(calories, 10),
-      protein: parseFloat(protein),
-      carbs: parseFloat(carbs),
-      fat: parseFloat(fat),
-      portion: portion.trim(),
+      caloriesPer100g: parseInt(caloriesPer100g, 10),
+      proteinPer100g: parseFloat(proteinPer100g),
+      carbsPer100g: parseFloat(carbsPer100g),
+      fatPer100g: parseFloat(fatPer100g),
+      pieceWeightGrams: pieceWeightGrams
+        ? parseInt(pieceWeightGrams, 10)
+        : undefined,
+      pieceName: pieceName.trim() || undefined,
       category,
       foodBankCategory: primaryCategory,
     };
-
-    // Only include weight fields for custom_foods
-    if (ingredient.source === "custom_foods") {
-      foodData.rawWeight = rawWeight ? parseInt(rawWeight, 10) : undefined;
-      foodData.cookedWeight = cookedWeight
-        ? parseInt(cookedWeight, 10)
-        : undefined;
-    }
 
     // Update the food
     const updateSuccess = await updateFood(
@@ -214,11 +214,10 @@ export function IngredientEditorSheet({
 
   const isFormValid =
     name.trim() !== "" &&
-    calories !== "" &&
-    protein !== "" &&
-    carbs !== "" &&
-    fat !== "" &&
-    portion.trim() !== "" &&
+    caloriesPer100g !== "" &&
+    proteinPer100g !== "" &&
+    carbsPer100g !== "" &&
+    fatPer100g !== "" &&
     primaryCategory !== "";
 
   if (!ingredient) return null;
@@ -293,57 +292,65 @@ export function IngredientEditorSheet({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Chicken Breast"
+              placeholder="e.g., Chicken Breast, Egg, Oats"
             />
           </div>
 
-          {/* Macros Grid */}
+          {/* Per 100g Notice */}
+          <div className="mb-4 rounded-lg bg-muted/50 px-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              All nutritional values should be entered <strong>per 100g</strong>
+              . You can find these values on food labels or nutrition databases.
+            </p>
+          </div>
+
+          {/* Macros Grid - Per 100g */}
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="calories">Calories *</Label>
+              <Label htmlFor="caloriesPer100g">Calories (per 100g) *</Label>
               <Input
-                id="calories"
+                id="caloriesPer100g"
                 type="number"
                 min="0"
-                value={calories}
-                onChange={(e) => setCalories(e.target.value)}
-                placeholder="0"
+                value={caloriesPer100g}
+                onChange={(e) => setCaloriesPer100g(e.target.value)}
+                placeholder="e.g., 165"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="protein">Protein (g) *</Label>
+              <Label htmlFor="proteinPer100g">Protein (g per 100g) *</Label>
               <Input
-                id="protein"
+                id="proteinPer100g"
                 type="number"
                 min="0"
                 step="0.1"
-                value={protein}
-                onChange={(e) => setProtein(e.target.value)}
-                placeholder="0"
+                value={proteinPer100g}
+                onChange={(e) => setProteinPer100g(e.target.value)}
+                placeholder="e.g., 31"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="carbs">Carbs (g) *</Label>
+              <Label htmlFor="carbsPer100g">Carbs (g per 100g) *</Label>
               <Input
-                id="carbs"
+                id="carbsPer100g"
                 type="number"
                 min="0"
                 step="0.1"
-                value={carbs}
-                onChange={(e) => setCarbs(e.target.value)}
-                placeholder="0"
+                value={carbsPer100g}
+                onChange={(e) => setCarbsPer100g(e.target.value)}
+                placeholder="e.g., 0"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fat">Fat (g) *</Label>
+              <Label htmlFor="fatPer100g">Fat (g per 100g) *</Label>
               <Input
-                id="fat"
+                id="fatPer100g"
                 type="number"
                 min="0"
                 step="0.1"
-                value={fat}
-                onChange={(e) => setFat(e.target.value)}
-                placeholder="0"
+                value={fatPer100g}
+                onChange={(e) => setFatPer100g(e.target.value)}
+                placeholder="e.g., 3.6"
               />
             </div>
           </div>
@@ -362,7 +369,7 @@ export function IngredientEditorSheet({
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
                   <span>
                     Macros check out! Calculated:{" "}
-                    {macroValidation.calculatedCalories} kcal
+                    {macroValidation.calculatedCalories} kcal/100g
                   </span>
                 </div>
               ) : (
@@ -374,44 +381,40 @@ export function IngredientEditorSheet({
             </div>
           )}
 
-          {/* Portion */}
+          {/* Piece Information (Optional) */}
           <div className="mb-4 space-y-2">
-            <Label htmlFor="portion">Portion Description *</Label>
-            <Input
-              id="portion"
-              value={portion}
-              onChange={(e) => setPortion(e.target.value)}
-              placeholder="e.g., 200g raw / 150g cooked"
-            />
-          </div>
-
-          {/* Weights Grid (Custom foods only) */}
-          {ingredient.source === "custom_foods" && (
-            <div className="mb-4 grid grid-cols-2 gap-4">
+            <Label>Piece Information (Optional)</Label>
+            <p className="text-xs text-muted-foreground">
+              For countable items like eggs, slices of bread, etc. This allows
+              measuring by piece count instead of grams.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="rawWeight">Raw Weight (g)</Label>
+                <Label htmlFor="pieceWeightGrams" className="text-xs">
+                  Weight per piece (g)
+                </Label>
                 <Input
-                  id="rawWeight"
+                  id="pieceWeightGrams"
                   type="number"
                   min="0"
-                  value={rawWeight}
-                  onChange={(e) => setRawWeight(e.target.value)}
-                  placeholder="Optional"
+                  value={pieceWeightGrams}
+                  onChange={(e) => setPieceWeightGrams(e.target.value)}
+                  placeholder="e.g., 50 for an egg"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cookedWeight">Cooked Weight (g)</Label>
+                <Label htmlFor="pieceName" className="text-xs">
+                  Piece name (singular)
+                </Label>
                 <Input
-                  id="cookedWeight"
-                  type="number"
-                  min="0"
-                  value={cookedWeight}
-                  onChange={(e) => setCookedWeight(e.target.value)}
-                  placeholder="Optional"
+                  id="pieceName"
+                  value={pieceName}
+                  onChange={(e) => setPieceName(e.target.value)}
+                  placeholder="e.g., egg, slice"
                 />
               </div>
             </div>
-          )}
+          </div>
 
           {/* Category Dropdowns */}
           <div className="mb-4 grid grid-cols-2 gap-4">

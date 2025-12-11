@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, ChevronLeft, Check } from "lucide-react";
+import { ArrowRight, ChevronLeft, Check, Plus, Minus } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -10,20 +10,165 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import type { Food, MealSlot, Meal } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { Food, MealFood, MealSlot, Meal, QuantityType } from "@/lib/types";
 import type { MealOption } from "@/lib/hooks/use-supabase";
+import {
+  calculateMacros,
+  createMealFood,
+  formatQuantity,
+  canMeasureInPieces,
+  getDefaultQuantity,
+} from "@/lib/utils/nutrition";
 
 interface FoodSwapSheetProps {
   isOpen: boolean;
   onClose: () => void;
   slot: MealSlot | null;
-  currentFoods: Food[];
-  onSwapFood: (oldFoodId: string, newFood: Food) => void;
-  onSelectMealOption?: (foods: Food[]) => void;
+  currentFoods: MealFood[];
+  onSwapFood: (oldFoodId: string, newFood: MealFood) => void;
+  onSelectMealOption?: (foods: MealFood[]) => void;
   onConfirm: () => void;
   getSwapOptions?: () => Record<string, Food[]>;
   mealOptions?: MealOption[];
   meal?: Meal;
+}
+
+// Quantity picker component for selecting how much of a food to add
+function QuantityPicker({
+  food,
+  quantity,
+  quantityType,
+  onQuantityChange,
+  onQuantityTypeChange,
+}: {
+  food: Food;
+  quantity: number;
+  quantityType: QuantityType;
+  onQuantityChange: (qty: number) => void;
+  onQuantityTypeChange: (type: QuantityType) => void;
+}) {
+  const canUsePieces = canMeasureInPieces(food);
+  const macros = calculateMacros(food, quantity, quantityType);
+
+  const increment = () => {
+    if (quantityType === "pieces") {
+      onQuantityChange(quantity + 1);
+    } else {
+      // Increment by 10g for grams
+      onQuantityChange(quantity + 10);
+    }
+  };
+
+  const decrement = () => {
+    if (quantityType === "pieces") {
+      if (quantity > 1) onQuantityChange(quantity - 1);
+    } else {
+      if (quantity > 10) onQuantityChange(quantity - 10);
+    }
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+      {/* Quantity type toggle (if pieces available) */}
+      {canUsePieces && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              onQuantityTypeChange("grams");
+              onQuantityChange(100);
+            }}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              quantityType === "grams"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            Grams
+          </button>
+          <button
+            onClick={() => {
+              onQuantityTypeChange("pieces");
+              onQuantityChange(1);
+            }}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              quantityType === "pieces"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            {food.pieceName ? `${food.pieceName}s` : "Pieces"}
+          </button>
+        </div>
+      )}
+
+      {/* Quantity input */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={decrement}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background hover:bg-muted"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={quantityType === "pieces" ? 1 : 10}
+            value={quantity}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val > 0) {
+                onQuantityChange(val);
+              }
+            }}
+            className="h-12 w-24 text-center text-lg font-semibold"
+          />
+          <span className="text-sm text-muted-foreground">
+            {quantityType === "grams" ? "g" : food.pieceName || "piece(s)"}
+          </span>
+        </div>
+
+        <button
+          onClick={increment}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background hover:bg-muted"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Preview macros */}
+      <div className="rounded-lg bg-muted/50 p-3">
+        <div className="grid grid-cols-4 gap-2 text-center text-sm">
+          <div>
+            <p className="text-lg font-semibold text-foreground">
+              {macros.calories}
+            </p>
+            <p className="text-xs text-muted-foreground">kcal</p>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-primary">
+              {macros.protein}g
+            </p>
+            <p className="text-xs text-muted-foreground">protein</p>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">
+              {macros.carbs}g
+            </p>
+            <p className="text-xs text-muted-foreground">carbs</p>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">
+              {macros.fat}g
+            </p>
+            <p className="text-xs text-muted-foreground">fat</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function FoodSwapSheet({
@@ -38,9 +183,12 @@ export function FoodSwapSheet({
   mealOptions,
   meal,
 }: FoodSwapSheetProps) {
-  const [selectedFoodToSwap, setSelectedFoodToSwap] = useState<Food | null>(
+  const [selectedFoodToSwap, setSelectedFoodToSwap] = useState<MealFood | null>(
     null
   );
+  const [selectedNewFood, setSelectedNewFood] = useState<Food | null>(null);
+  const [quantity, setQuantity] = useState<number>(100);
+  const [quantityType, setQuantityType] = useState<QuantityType>("grams");
 
   if (!slot) return null;
 
@@ -58,25 +206,52 @@ export function FoodSwapSheet({
 
   const handleClose = () => {
     setSelectedFoodToSwap(null);
+    setSelectedNewFood(null);
+    setQuantity(100);
+    setQuantityType("grams");
     onClose();
   };
 
-  const handleSelectReplacement = (newFood: Food) => {
-    if (selectedFoodToSwap) {
-      onSwapFood(selectedFoodToSwap.id, newFood);
+  const handleSelectFoodToSwap = (food: MealFood) => {
+    setSelectedFoodToSwap(food);
+  };
+
+  const handleSelectNewFood = (food: Food) => {
+    const defaults = getDefaultQuantity(food);
+    setSelectedNewFood(food);
+    setQuantity(defaults.quantity);
+    setQuantityType(defaults.quantityType);
+  };
+
+  const handleConfirmSwap = () => {
+    if (selectedFoodToSwap && selectedNewFood) {
+      const mealFood = createMealFood(selectedNewFood, quantity, quantityType);
+      onSwapFood(selectedFoodToSwap.id, mealFood);
       setSelectedFoodToSwap(null);
+      setSelectedNewFood(null);
+      setQuantity(100);
+      setQuantityType("grams");
     }
   };
 
   const handleSelectMealOption = (option: MealOption) => {
     if (onSelectMealOption) {
-      onSelectMealOption(option.foods);
+      // Convert option foods to MealFood with default quantities
+      const mealFoods: MealFood[] = option.foods.map((food) => {
+        const defaults = getDefaultQuantity(food);
+        return createMealFood(food, defaults.quantity, defaults.quantityType);
+      });
+      onSelectMealOption(mealFoods);
       handleClose();
     }
   };
 
   const handleBack = () => {
-    setSelectedFoodToSwap(null);
+    if (selectedNewFood) {
+      setSelectedNewFood(null);
+    } else {
+      setSelectedFoodToSwap(null);
+    }
   };
 
   // Get swap options based on the food category being swapped
@@ -114,16 +289,87 @@ export function FoodSwapSheet({
     return labels[s];
   };
 
-  // Check if current foods match a meal option
+  // Check if current foods match a meal option (compare id, quantity, and quantityType)
   const isCurrentOption = (option: MealOption) => {
     if (option.foods.length !== currentFoods.length) return false;
-    const currentIds = currentFoods.map((f) => f.id).sort();
-    const optionIds = option.foods.map((f) => f.id).sort();
-    return currentIds.every((id, i) => id === optionIds[i]);
+
+    // Create a key for each food: id-quantity-quantityType
+    const makeKey = (f: MealFood) => `${f.id}-${f.quantity}-${f.quantityType}`;
+    const currentKeys = currentFoods.map(makeKey).sort();
+    const optionKeys = option.foods.map(makeKey).sort();
+
+    return currentKeys.every((key, i) => key === optionKeys[i]);
   };
 
   const targetCalories = meal?.targetCalories || 500;
   const targetProtein = meal?.targetProtein || 30;
+
+  // Render the quantity selection screen
+  if (selectedNewFood) {
+    const macros = calculateMacros(selectedNewFood, quantity, quantityType);
+
+    return (
+      <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <SheetContent
+          side="bottom"
+          className="h-[85vh] overflow-hidden rounded-t-3xl"
+        >
+          <SheetHeader className="text-left">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBack}
+                className="rounded-full p-1 hover:bg-muted"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <SheetTitle>Set Quantity</SheetTitle>
+            </div>
+            <SheetDescription>
+              How much {selectedNewFood.name} do you want?
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {/* Food info */}
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-foreground">
+                {selectedNewFood.name}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {selectedNewFood.caloriesPer100g} kcal /{" "}
+                {selectedNewFood.proteinPer100g}g protein per 100g
+              </p>
+            </div>
+
+            {/* Quantity picker */}
+            <QuantityPicker
+              food={selectedNewFood}
+              quantity={quantity}
+              quantityType={quantityType}
+              onQuantityChange={setQuantity}
+              onQuantityTypeChange={setQuantityType}
+            />
+          </div>
+
+          {/* Confirm button */}
+          <div className="absolute bottom-0 left-0 right-0 border-t border-border bg-background p-4">
+            <Button
+              onClick={handleConfirmSwap}
+              className="h-12 w-full rounded-xl text-base font-semibold"
+            >
+              Add{" "}
+              {formatQuantity(
+                quantity,
+                quantityType,
+                selectedNewFood.pieceName
+              )}{" "}
+              ({macros.calories} kcal)
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -204,11 +450,11 @@ export function FoodSwapSheet({
             <div className="space-y-2">
               {mealOptions.map((option) => {
                 const optionCalories = option.foods.reduce(
-                  (sum, f) => sum + f.calories,
+                  (sum, f) => sum + f.caloriesPer100g,
                   0
                 );
                 const optionProtein = option.foods.reduce(
-                  (sum, f) => sum + f.protein,
+                  (sum, f) => sum + f.proteinPer100g,
                   0
                 );
                 const isCurrent = isCurrentOption(option);
@@ -261,7 +507,7 @@ export function FoodSwapSheet({
               {currentFoods.map((food) => (
                 <button
                   key={food.id}
-                  onClick={() => setSelectedFoodToSwap(food)}
+                  onClick={() => handleSelectFoodToSwap(food)}
                   className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30"
                 >
                   <div className="flex-1">
@@ -269,7 +515,11 @@ export function FoodSwapSheet({
                       {food.name}
                     </span>
                     <p className="text-xs text-muted-foreground">
-                      {food.portion}
+                      {formatQuantity(
+                        food.quantity,
+                        food.quantityType,
+                        food.pieceName
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -298,16 +548,12 @@ export function FoodSwapSheet({
                     {foods.map((food) => {
                       const isCurrentSelection =
                         food.id === selectedFoodToSwap.id;
-                      const calorieDiff =
-                        food.calories - selectedFoodToSwap.calories;
-                      const proteinDiff =
-                        food.protein - selectedFoodToSwap.protein;
 
                       return (
                         <button
                           key={food.id}
                           onClick={() =>
-                            !isCurrentSelection && handleSelectReplacement(food)
+                            !isCurrentSelection && handleSelectNewFood(food)
                           }
                           disabled={isCurrentSelection}
                           className={`flex w-full items-center justify-between rounded-xl p-3 text-left transition-all ${
@@ -328,25 +574,18 @@ export function FoodSwapSheet({
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {food.portion}
+                              {food.caloriesPer100g} kcal /{" "}
+                              {food.proteinPer100g}g protein per 100g
+                              {food.pieceWeightGrams && (
+                                <>
+                                  {" "}
+                                  · 1 {food.pieceName || "piece"} ={" "}
+                                  {food.pieceWeightGrams}g
+                                </>
+                              )}
                             </p>
                           </div>
-                          <div className="text-right text-sm">
-                            <p className="text-foreground">
-                              {food.calories} kcal
-                            </p>
-                            <p className="text-primary font-medium">
-                              {food.protein}g protein
-                            </p>
-                            {!isCurrentSelection && (
-                              <p className="text-xs text-muted-foreground">
-                                {calorieDiff >= 0 ? "+" : ""}
-                                {calorieDiff} kcal /{" "}
-                                {proteinDiff >= 0 ? "+" : ""}
-                                {proteinDiff}g
-                              </p>
-                            )}
-                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         </button>
                       );
                     })}

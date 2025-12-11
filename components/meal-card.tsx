@@ -1,16 +1,22 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ChevronDown, ChevronUp, ArrowLeftRight, RotateCcw } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import type { Meal, Food, MealSlot } from "@/lib/types"
+import { useState } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowLeftRight,
+  RotateCcw,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import type { Meal, MealFood, MealSlot } from "@/lib/types";
+import { formatQuantity } from "@/lib/utils/nutrition";
 
 interface MealCardProps {
-  meal: Meal
-  customFoods: Food[]
-  onSwapFood: (slot: MealSlot) => void
-  onReset: (slot: MealSlot) => void
+  meal: Meal;
+  customFoods: MealFood[];
+  onSwapFood: (slot: MealSlot) => void;
+  onReset: (slot: MealSlot) => void;
 }
 
 export function MealCard({
@@ -19,24 +25,35 @@ export function MealCard({
   onSwapFood,
   onReset,
 }: MealCardProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false);
 
   // Use custom foods if any, otherwise use defaults
-  const displayFoods = customFoods.length > 0 ? customFoods : meal.foods
-  const isCustomized = customFoods.length > 0
+  const displayFoods = customFoods.length > 0 ? customFoods : meal.foods;
+  const isCustomized = customFoods.length > 0;
 
-  // Calculate totals
-  const totalCalories = displayFoods.reduce((sum, food) => sum + food.calories, 0)
-  const totalProtein = displayFoods.reduce((sum, food) => sum + food.protein, 0)
-  const totalCarbs = displayFoods.reduce((sum, food) => sum + food.carbs, 0)
-  const totalFat = displayFoods.reduce((sum, food) => sum + food.fat, 0)
+  // Calculate totals (using the calculated values in MealFood)
+  const totalCalories = displayFoods.reduce(
+    (sum, food) => sum + food.calories,
+    0
+  );
+  const totalProtein = displayFoods.reduce(
+    (sum, food) => sum + food.protein,
+    0
+  );
+  const totalCarbs = displayFoods.reduce((sum, food) => sum + food.carbs, 0);
+  const totalFat = displayFoods.reduce((sum, food) => sum + food.fat, 0);
 
   // Calculate percentage of target
-  const caloriePercent = Math.round((totalCalories / meal.targetCalories) * 100)
-  const proteinPercent = Math.round((totalProtein / meal.targetProtein) * 100)
+  const caloriePercent = Math.round(
+    (totalCalories / meal.targetCalories) * 100
+  );
+  const proteinPercent = Math.round((totalProtein / meal.targetProtein) * 100);
 
   // Determine if this is a simple swap slot (breakfast/snacks pick ONE option)
-  const isSimpleSwapSlot = meal.slot === "breakfast" || meal.slot === "snack1" || meal.slot === "snack2"
+  const isSimpleSwapSlot =
+    meal.slot === "breakfast" ||
+    meal.slot === "snack1" ||
+    meal.slot === "snack2";
 
   return (
     <Card className="overflow-hidden">
@@ -61,11 +78,15 @@ export function MealCard({
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-lg font-bold text-foreground">{totalCalories}</p>
+              <p className="text-lg font-bold text-foreground">
+                {Math.round(totalCalories)}
+              </p>
               <p className="text-xs text-muted-foreground">kcal</p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-primary">{totalProtein}g</p>
+              <p className="text-lg font-bold text-primary">
+                {Math.round(totalProtein)}g
+              </p>
               <p className="text-xs text-muted-foreground">protein</p>
             </div>
             {expanded ? (
@@ -114,10 +135,16 @@ export function MealCard({
             {/* Macro breakdown */}
             <div className="mb-4 flex gap-4 text-sm">
               <span className="text-muted-foreground">
-                Carbs: <strong className="text-foreground">{totalCarbs}g</strong>
+                Carbs:{" "}
+                <strong className="text-foreground">
+                  {Math.round(totalCarbs)}g
+                </strong>
               </span>
               <span className="text-muted-foreground">
-                Fat: <strong className="text-foreground">{totalFat}g</strong>
+                Fat:{" "}
+                <strong className="text-foreground">
+                  {Math.round(totalFat)}g
+                </strong>
               </span>
             </div>
 
@@ -130,12 +157,22 @@ export function MealCard({
                 >
                   <div>
                     <p className="font-medium text-foreground">{food.name}</p>
-                    <p className="text-xs text-muted-foreground">{food.portion}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatQuantity(
+                        food.quantity,
+                        food.quantityType,
+                        food.pieceName
+                      )}
+                    </p>
                   </div>
                   <div className="text-right text-sm">
-                    <span className="text-muted-foreground">{food.calories} kcal</span>
+                    <span className="text-muted-foreground">
+                      {food.calories} kcal
+                    </span>
                     <span className="mx-1 text-muted-foreground">·</span>
-                    <span className="font-medium text-primary">{food.protein}g</span>
+                    <span className="font-medium text-primary">
+                      {food.protein}g
+                    </span>
                   </div>
                 </div>
               ))}
@@ -144,7 +181,7 @@ export function MealCard({
             {/* Notes */}
             {meal.notes && (
               <p className="mt-3 text-xs text-muted-foreground italic">
-                💡 {meal.notes}
+                {meal.notes}
               </p>
             )}
 
@@ -175,5 +212,5 @@ export function MealCard({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

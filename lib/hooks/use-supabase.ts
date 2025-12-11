@@ -10,6 +10,7 @@ import type {
   WeightEntry,
   UserProfile,
   Food,
+  MealFood,
   Meal,
   MealSlot,
   DayType,
@@ -18,6 +19,7 @@ import type {
   WorkoutTemplate,
 } from "@/lib/types";
 import { getDefaultCardioTemplate } from "@/lib/data/workouts";
+import { calculateMacros } from "@/lib/utils/nutrition";
 
 // =============================================
 // AUTH HOOK
@@ -324,31 +326,35 @@ export function useUserExerciseData() {
 interface DBFood {
   id: string;
   name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  portion: string;
+  calories: number; // per 100g
+  protein: number; // per 100g
+  carbs: number; // per 100g
+  fat: number; // per 100g
+  portion: string; // legacy field, kept for backwards compatibility
   category: string;
   food_bank_category: string;
   is_enabled?: boolean;
+  piece_weight_grams?: number; // weight of one piece in grams
+  piece_name?: string; // singular name for pieces (e.g., "egg")
 }
 
 interface DBCustomFood {
   id: string;
   created_by: string;
   name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  portion: string;
+  calories: number; // per 100g
+  protein: number; // per 100g
+  carbs: number; // per 100g
+  fat: number; // per 100g
+  portion: string; // legacy field
   raw_weight: number | null;
   cooked_weight: number | null;
   category: string;
   food_bank_category: string;
   created_at: string;
   is_enabled?: boolean;
+  piece_weight_grams?: number;
+  piece_name?: string;
 }
 
 interface DBFoodCategoryAssignment {
@@ -364,6 +370,36 @@ export interface ExtendedFood extends Food {
   source: "foods" | "custom_foods";
   isEnabled: boolean;
   additionalCategories: string[];
+}
+
+// Helper function to transform DB food to Food type
+function transformDBFoodToFood(f: DBFood): Food {
+  return {
+    id: f.id,
+    name: f.name,
+    caloriesPer100g: f.calories,
+    proteinPer100g: f.protein,
+    carbsPer100g: f.carbs,
+    fatPer100g: f.fat,
+    pieceWeightGrams: f.piece_weight_grams,
+    pieceName: f.piece_name,
+    category: f.category as Food["category"],
+  };
+}
+
+// Helper function to transform DB custom food to Food type
+function transformDBCustomFoodToFood(f: DBCustomFood): Food {
+  return {
+    id: f.id,
+    name: f.name,
+    caloriesPer100g: f.calories,
+    proteinPer100g: Number(f.protein),
+    carbsPer100g: Number(f.carbs),
+    fatPer100g: Number(f.fat),
+    pieceWeightGrams: f.piece_weight_grams,
+    pieceName: f.piece_name,
+    category: f.category as Food["category"],
+  };
 }
 
 export function useFoods() {
@@ -423,32 +459,12 @@ export function useFoods() {
     // Transform regular foods (only enabled ones for normal use)
     const transformedFoods: Food[] = dbFoods
       .filter((f) => f.is_enabled !== false)
-      .map((f) => ({
-        id: f.id,
-        name: f.name,
-        calories: f.calories,
-        protein: f.protein,
-        carbs: f.carbs,
-        fat: f.fat,
-        portion: f.portion,
-        category: f.category as Food["category"],
-      }));
+      .map(transformDBFoodToFood);
 
     // Transform custom foods (only enabled ones for normal use)
     const transformedCustomFoods: Food[] = dbCustomFoods
       .filter((f) => f.is_enabled !== false)
-      .map((f) => ({
-        id: f.id,
-        name: f.name,
-        calories: f.calories,
-        protein: Number(f.protein),
-        carbs: Number(f.carbs),
-        fat: Number(f.fat),
-        portion: f.portion,
-        rawWeight: f.raw_weight ?? undefined,
-        cookedWeight: f.cooked_weight ?? undefined,
-        category: f.category as Food["category"],
-      }));
+      .map(transformDBCustomFoodToFood);
 
     // Combine all enabled foods
     const allFoods = [...transformedFoods, ...transformedCustomFoods];
@@ -457,30 +473,14 @@ export function useFoods() {
     // Build extended foods list for admin (includes all foods with metadata)
     const extendedFoods: ExtendedFood[] = [
       ...dbFoods.map((f) => ({
-        id: f.id,
-        name: f.name,
-        calories: f.calories,
-        protein: f.protein,
-        carbs: f.carbs,
-        fat: f.fat,
-        portion: f.portion,
-        category: f.category as Food["category"],
+        ...transformDBFoodToFood(f),
         foodBankCategory: f.food_bank_category,
         source: "foods" as const,
         isEnabled: f.is_enabled !== false,
         additionalCategories: additionalCategoriesMap[`foods:${f.id}`] || [],
       })),
       ...dbCustomFoods.map((f) => ({
-        id: f.id,
-        name: f.name,
-        calories: f.calories,
-        protein: Number(f.protein),
-        carbs: Number(f.carbs),
-        fat: Number(f.fat),
-        portion: f.portion,
-        rawWeight: f.raw_weight ?? undefined,
-        cookedWeight: f.cooked_weight ?? undefined,
-        category: f.category as Food["category"],
+        ...transformDBCustomFoodToFood(f),
         foodBankCategory: f.food_bank_category,
         source: "custom_foods" as const,
         isEnabled: f.is_enabled !== false,
@@ -508,16 +508,7 @@ export function useFoods() {
     dbFoods
       .filter((f) => f.is_enabled !== false)
       .forEach((f) => {
-        const food: Food = {
-          id: f.id,
-          name: f.name,
-          calories: f.calories,
-          protein: f.protein,
-          carbs: f.carbs,
-          fat: f.fat,
-          portion: f.portion,
-          category: f.category as Food["category"],
-        };
+        const food = transformDBFoodToFood(f);
         // Add to primary category
         addToGroup(f.food_bank_category, food);
         // Add to additional categories
@@ -529,18 +520,7 @@ export function useFoods() {
     dbCustomFoods
       .filter((f) => f.is_enabled !== false)
       .forEach((f) => {
-        const food: Food = {
-          id: f.id,
-          name: f.name,
-          calories: f.calories,
-          protein: Number(f.protein),
-          carbs: Number(f.carbs),
-          fat: Number(f.fat),
-          portion: f.portion,
-          rawWeight: f.raw_weight ?? undefined,
-          cookedWeight: f.cooked_weight ?? undefined,
-          category: f.category as Food["category"],
-        };
+        const food = transformDBCustomFoodToFood(f);
         // Add to primary category
         addToGroup(f.food_bank_category, food);
         // Add to additional categories
@@ -577,37 +557,39 @@ export function useFoods() {
 
 export interface CustomFoodInput {
   name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  portion: string;
-  rawWeight?: number;
-  cookedWeight?: number;
+  // All macros per 100g
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatPer100g: number;
+  // Optional piece info
+  pieceWeightGrams?: number;
+  pieceName?: string;
   category: Food["category"];
   foodBankCategory: string;
 }
 
 // Validate that macros roughly match calories (within 15% tolerance)
+// All values should be per 100g
 export function validateMacros(food: CustomFoodInput): {
   valid: boolean;
   calculatedCalories: number;
   message?: string;
 } {
   const calculatedCalories = Math.round(
-    food.protein * 4 + food.carbs * 4 + food.fat * 9
+    food.proteinPer100g * 4 + food.carbsPer100g * 4 + food.fatPer100g * 9
   );
-  const tolerance = food.calories * 0.15; // 15% tolerance
-  const diff = Math.abs(calculatedCalories - food.calories);
+  const tolerance = food.caloriesPer100g * 0.15; // 15% tolerance
+  const diff = Math.abs(calculatedCalories - food.caloriesPer100g);
 
   if (diff > tolerance) {
     return {
       valid: false,
       calculatedCalories,
-      message: `Macros calculate to ${calculatedCalories} kcal but you entered ${
-        food.calories
-      } kcal. Difference: ${diff > 0 ? "+" : ""}${
-        calculatedCalories - food.calories
+      message: `Macros calculate to ${calculatedCalories} kcal/100g but you entered ${
+        food.caloriesPer100g
+      } kcal/100g. Difference: ${diff > 0 ? "+" : ""}${
+        calculatedCalories - food.caloriesPer100g
       } kcal`,
     };
   }
@@ -639,13 +621,13 @@ export function useCustomFoods() {
           .insert({
             created_by: user.id,
             name: food.name,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            portion: food.portion,
-            raw_weight: food.rawWeight ?? null,
-            cooked_weight: food.cookedWeight ?? null,
+            calories: food.caloriesPer100g,
+            protein: food.proteinPer100g,
+            carbs: food.carbsPer100g,
+            fat: food.fatPer100g,
+            portion: "", // Legacy field, no longer used
+            piece_weight_grams: food.pieceWeightGrams ?? null,
+            piece_name: food.pieceName ?? null,
             category: food.category,
             food_bank_category: food.foodBankCategory,
           })
@@ -667,13 +649,12 @@ export function useCustomFoods() {
         const newFood: Food = {
           id: data.id,
           name: data.name,
-          calories: data.calories,
-          protein: Number(data.protein),
-          carbs: Number(data.carbs),
-          fat: Number(data.fat),
-          portion: data.portion,
-          rawWeight: data.raw_weight ?? undefined,
-          cookedWeight: data.cooked_weight ?? undefined,
+          caloriesPer100g: data.calories,
+          proteinPer100g: Number(data.protein),
+          carbsPer100g: Number(data.carbs),
+          fatPer100g: Number(data.fat),
+          pieceWeightGrams: data.piece_weight_grams ?? undefined,
+          pieceName: data.piece_name ?? undefined,
           category: data.category as Food["category"],
         };
 
@@ -702,15 +683,17 @@ export function useCustomFoods() {
       try {
         const updateData: Record<string, unknown> = {};
         if (food.name !== undefined) updateData.name = food.name;
-        if (food.calories !== undefined) updateData.calories = food.calories;
-        if (food.protein !== undefined) updateData.protein = food.protein;
-        if (food.carbs !== undefined) updateData.carbs = food.carbs;
-        if (food.fat !== undefined) updateData.fat = food.fat;
-        if (food.portion !== undefined) updateData.portion = food.portion;
-        if (food.rawWeight !== undefined)
-          updateData.raw_weight = food.rawWeight;
-        if (food.cookedWeight !== undefined)
-          updateData.cooked_weight = food.cookedWeight;
+        if (food.caloriesPer100g !== undefined)
+          updateData.calories = food.caloriesPer100g;
+        if (food.proteinPer100g !== undefined)
+          updateData.protein = food.proteinPer100g;
+        if (food.carbsPer100g !== undefined)
+          updateData.carbs = food.carbsPer100g;
+        if (food.fatPer100g !== undefined) updateData.fat = food.fatPer100g;
+        if (food.pieceWeightGrams !== undefined)
+          updateData.piece_weight_grams = food.pieceWeightGrams;
+        if (food.pieceName !== undefined)
+          updateData.piece_name = food.pieceName;
         if (food.category !== undefined) updateData.category = food.category;
         if (food.foodBankCategory !== undefined)
           updateData.food_bank_category = food.foodBankCategory;
@@ -869,22 +852,20 @@ export function useIngredientManagement() {
       try {
         const updateData: Record<string, unknown> = {};
         if (data.name !== undefined) updateData.name = data.name;
-        if (data.calories !== undefined) updateData.calories = data.calories;
-        if (data.protein !== undefined) updateData.protein = data.protein;
-        if (data.carbs !== undefined) updateData.carbs = data.carbs;
-        if (data.fat !== undefined) updateData.fat = data.fat;
-        if (data.portion !== undefined) updateData.portion = data.portion;
+        if (data.caloriesPer100g !== undefined)
+          updateData.calories = data.caloriesPer100g;
+        if (data.proteinPer100g !== undefined)
+          updateData.protein = data.proteinPer100g;
+        if (data.carbsPer100g !== undefined)
+          updateData.carbs = data.carbsPer100g;
+        if (data.fatPer100g !== undefined) updateData.fat = data.fatPer100g;
+        if (data.pieceWeightGrams !== undefined)
+          updateData.piece_weight_grams = data.pieceWeightGrams;
+        if (data.pieceName !== undefined)
+          updateData.piece_name = data.pieceName;
         if (data.category !== undefined) updateData.category = data.category;
         if (data.foodBankCategory !== undefined)
           updateData.food_bank_category = data.foodBankCategory;
-
-        // Only custom_foods has these fields
-        if (source === "custom_foods") {
-          if (data.rawWeight !== undefined)
-            updateData.raw_weight = data.rawWeight;
-          if (data.cookedWeight !== undefined)
-            updateData.cooked_weight = data.cookedWeight;
-        }
 
         const { error: updateError } = await supabase
           .from(source)
@@ -1040,6 +1021,13 @@ export function useIngredientManagement() {
   };
 }
 
+interface DBMealFood {
+  food_id: string;
+  quantity: number;
+  quantity_type: "grams" | "pieces";
+  foods: DBFood;
+}
+
 interface DBMeal {
   id: string;
   slot: string;
@@ -1047,10 +1035,7 @@ interface DBMeal {
   target_calories: number;
   target_protein: number;
   notes: string | null;
-  meal_foods: Array<{
-    food_id: string;
-    foods: DBFood;
-  }>;
+  meal_foods: DBMealFood[];
 }
 
 export function useMeals() {
@@ -1060,7 +1045,7 @@ export function useMeals() {
 
   useEffect(() => {
     async function fetchMeals() {
-      // Fetch meals with their foods
+      // Fetch meals with their foods including quantity
       const { data: mealsData, error: mealsError } = await supabase
         .from("meals")
         .select(
@@ -1068,6 +1053,8 @@ export function useMeals() {
           *,
           meal_foods (
             food_id,
+            quantity,
+            quantity_type,
             foods (*)
           )
         `
@@ -1087,16 +1074,33 @@ export function useMeals() {
         targetCalories: m.target_calories,
         targetProtein: m.target_protein,
         notes: m.notes ?? undefined,
-        foods: (m.meal_foods || []).map((mf) => ({
-          id: mf.foods.id,
-          name: mf.foods.name,
-          calories: mf.foods.calories,
-          protein: mf.foods.protein,
-          carbs: mf.foods.carbs,
-          fat: mf.foods.fat,
-          portion: mf.foods.portion,
-          category: mf.foods.category as Food["category"],
-        })),
+        foods: (m.meal_foods || []).map((mf) => {
+          const baseFood: Food = {
+            id: mf.foods.id,
+            name: mf.foods.name,
+            caloriesPer100g: mf.foods.calories,
+            proteinPer100g: mf.foods.protein,
+            carbsPer100g: mf.foods.carbs,
+            fatPer100g: mf.foods.fat,
+            pieceWeightGrams: mf.foods.piece_weight_grams,
+            pieceName: mf.foods.piece_name,
+            category: mf.foods.category as Food["category"],
+          };
+          const macros = calculateMacros(
+            baseFood,
+            mf.quantity,
+            mf.quantity_type
+          );
+          return {
+            ...baseFood,
+            quantity: mf.quantity,
+            quantityType: mf.quantity_type,
+            calories: macros.calories,
+            protein: macros.protein,
+            carbs: macros.carbs,
+            fat: macros.fat,
+          };
+        }),
       }));
 
       setMeals(transformed);
@@ -1652,11 +1656,11 @@ interface DBUserMealPreference {
   id: string;
   user_id: string;
   slot: string;
-  foods: Food[];
+  foods: MealFood[];
 }
 
 export function useUserMeals() {
-  const [customMeals, setCustomMeals] = useState<Record<MealSlot, Food[]>>({
+  const [customMeals, setCustomMeals] = useState<Record<MealSlot, MealFood[]>>({
     breakfast: [],
     snack1: [],
     lunch: [],
@@ -1685,7 +1689,7 @@ export function useUserMeals() {
         return;
       }
 
-      const prefs: Record<MealSlot, Food[]> = {
+      const prefs: Record<MealSlot, MealFood[]> = {
         breakfast: [],
         snack1: [],
         lunch: [],
@@ -1695,7 +1699,7 @@ export function useUserMeals() {
 
       const dbPrefs = (data as DBUserMealPreference[]) || [];
       dbPrefs.forEach((p) => {
-        prefs[p.slot as MealSlot] = p.foods as Food[];
+        prefs[p.slot as MealSlot] = p.foods as MealFood[];
       });
 
       setCustomMeals(prefs);
@@ -1706,7 +1710,7 @@ export function useUserMeals() {
   }, [user, supabase]);
 
   const updateMealFoods = useCallback(
-    async (slot: MealSlot, foods: Food[]) => {
+    async (slot: MealSlot, foods: MealFood[]) => {
       if (!user) return;
 
       const { error } = await supabase.from("user_meal_preferences").upsert(
@@ -1734,7 +1738,7 @@ export function useUserMeals() {
   );
 
   const addFoodToMeal = useCallback(
-    async (slot: MealSlot, food: Food) => {
+    async (slot: MealSlot, food: MealFood) => {
       const newFoods = [...customMeals[slot], food];
       await updateMealFoods(slot, newFoods);
     },
@@ -2161,7 +2165,7 @@ export interface MealOption {
   id: string;
   slot: "breakfast" | "snack";
   name: string;
-  foods: Food[];
+  foods: MealFood[];
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -2203,7 +2207,7 @@ export function useMealOptions() {
       id: opt.id,
       slot: opt.slot as MealOption["slot"],
       name: opt.name,
-      foods: opt.foods,
+      foods: opt.foods as MealFood[],
       createdBy: opt.created_by ?? undefined,
       createdAt: opt.created_at,
       updatedAt: opt.updated_at,
@@ -2248,7 +2252,7 @@ export function useMealOptions() {
     async (
       slot: "breakfast" | "snack",
       name: string,
-      foods: Food[]
+      foods: MealFood[]
     ): Promise<MealOption | null> => {
       if (!user) return null;
 
@@ -2272,7 +2276,7 @@ export function useMealOptions() {
         id: data.id,
         slot: data.slot as MealOption["slot"],
         name: data.name,
-        foods: data.foods,
+        foods: data.foods as MealFood[],
         createdBy: data.created_by,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
@@ -2286,7 +2290,7 @@ export function useMealOptions() {
 
   // Update an existing meal option
   const updateMealOption = useCallback(
-    async (id: string, name: string, foods: Food[]): Promise<boolean> => {
+    async (id: string, name: string, foods: MealFood[]): Promise<boolean> => {
       if (!user) return false;
 
       const { error } = await supabase

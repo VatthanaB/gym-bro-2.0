@@ -331,15 +331,24 @@ export function IngredientManagementSection() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{ingredient.calories} kcal</span>
+                            <span>{ingredient.caloriesPer100g} kcal/100g</span>
                             <span>·</span>
                             <span className="text-primary">
-                              {ingredient.protein}g P
+                              {ingredient.proteinPer100g}g P
                             </span>
                             <span>·</span>
-                            <span>{ingredient.carbs}g C</span>
+                            <span>{ingredient.carbsPer100g}g C</span>
                             <span>·</span>
-                            <span>{ingredient.fat}g F</span>
+                            <span>{ingredient.fatPer100g}g F</span>
+                            {ingredient.pieceWeightGrams && (
+                              <>
+                                <span>·</span>
+                                <span className="text-muted-foreground/70">
+                                  1 {ingredient.pieceName || "pc"} ={" "}
+                                  {ingredient.pieceWeightGrams}g
+                                </span>
+                              </>
+                            )}
                             {ingredient.additionalCategories.length > 0 && (
                               <>
                                 <span>·</span>

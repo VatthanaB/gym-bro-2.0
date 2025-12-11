@@ -32,15 +32,14 @@ export function AddIngredientForm({
   const { addCustomFood, isAdding, error, clearError } = useCustomFoods();
   const [success, setSuccess] = useState(false);
 
-  // Form state
+  // Form state - all macros are per 100g
   const [name, setName] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [portion, setPortion] = useState("");
-  const [rawWeight, setRawWeight] = useState("");
-  const [cookedWeight, setCookedWeight] = useState("");
+  const [caloriesPer100g, setCaloriesPer100g] = useState("");
+  const [proteinPer100g, setProteinPer100g] = useState("");
+  const [carbsPer100g, setCarbsPer100g] = useState("");
+  const [fatPer100g, setFatPer100g] = useState("");
+  const [pieceWeightGrams, setPieceWeightGrams] = useState("");
+  const [pieceName, setPieceName] = useState("");
   const [category, setCategory] = useState<Food["category"]>("protein");
   const [foodBankCategory, setFoodBankCategory] = useState("");
 
@@ -53,10 +52,10 @@ export function AddIngredientForm({
 
   // Validate macros when values change
   useEffect(() => {
-    const cal = parseFloat(calories);
-    const prot = parseFloat(protein);
-    const carb = parseFloat(carbs);
-    const fatVal = parseFloat(fat);
+    const cal = parseFloat(caloriesPer100g);
+    const prot = parseFloat(proteinPer100g);
+    const carb = parseFloat(carbsPer100g);
+    const fatVal = parseFloat(fatPer100g);
 
     if (
       !isNaN(cal) &&
@@ -67,11 +66,10 @@ export function AddIngredientForm({
     ) {
       const validation = validateMacros({
         name,
-        calories: cal,
-        protein: prot,
-        carbs: carb,
-        fat: fatVal,
-        portion,
+        caloriesPer100g: cal,
+        proteinPer100g: prot,
+        carbsPer100g: carb,
+        fatPer100g: fatVal,
         category,
         foodBankCategory,
       });
@@ -80,12 +78,11 @@ export function AddIngredientForm({
       setMacroValidation(null);
     }
   }, [
-    calories,
-    protein,
-    carbs,
-    fat,
+    caloriesPer100g,
+    proteinPer100g,
+    carbsPer100g,
+    fatPer100g,
     name,
-    portion,
     category,
     foodBankCategory,
   ]);
@@ -100,13 +97,12 @@ export function AddIngredientForm({
 
   const resetForm = () => {
     setName("");
-    setCalories("");
-    setProtein("");
-    setCarbs("");
-    setFat("");
-    setPortion("");
-    setRawWeight("");
-    setCookedWeight("");
+    setCaloriesPer100g("");
+    setProteinPer100g("");
+    setCarbsPer100g("");
+    setFatPer100g("");
+    setPieceWeightGrams("");
+    setPieceName("");
     setCategory("protein");
     setFoodBankCategory("");
     setMacroValidation(null);
@@ -120,13 +116,14 @@ export function AddIngredientForm({
 
     const foodInput: CustomFoodInput = {
       name: name.trim(),
-      calories: parseInt(calories, 10),
-      protein: parseFloat(protein),
-      carbs: parseFloat(carbs),
-      fat: parseFloat(fat),
-      portion: portion.trim(),
-      rawWeight: rawWeight ? parseInt(rawWeight, 10) : undefined,
-      cookedWeight: cookedWeight ? parseInt(cookedWeight, 10) : undefined,
+      caloriesPer100g: parseInt(caloriesPer100g, 10),
+      proteinPer100g: parseFloat(proteinPer100g),
+      carbsPer100g: parseFloat(carbsPer100g),
+      fatPer100g: parseFloat(fatPer100g),
+      pieceWeightGrams: pieceWeightGrams
+        ? parseInt(pieceWeightGrams, 10)
+        : undefined,
+      pieceName: pieceName.trim() || undefined,
       category,
       foodBankCategory,
     };
@@ -142,11 +139,10 @@ export function AddIngredientForm({
 
   const isFormValid =
     name.trim() !== "" &&
-    calories !== "" &&
-    protein !== "" &&
-    carbs !== "" &&
-    fat !== "" &&
-    portion.trim() !== "" &&
+    caloriesPer100g !== "" &&
+    proteinPer100g !== "" &&
+    carbsPer100g !== "" &&
+    fatPer100g !== "" &&
     foodBankCategory !== "";
 
   return (
@@ -174,61 +170,69 @@ export function AddIngredientForm({
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g., Chicken Breast"
+          placeholder="e.g., Chicken Breast, Egg, Oats"
           required
         />
       </div>
 
-      {/* Macros Grid */}
+      {/* Per 100g Notice */}
+      <div className="rounded-lg bg-muted/50 px-3 py-2">
+        <p className="text-xs text-muted-foreground">
+          All nutritional values should be entered <strong>per 100g</strong>.
+          You can find these values on food labels or nutrition databases.
+        </p>
+      </div>
+
+      {/* Macros Grid - Per 100g */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="calories">Calories *</Label>
+          <Label htmlFor="caloriesPer100g">Calories (per 100g) *</Label>
           <Input
-            id="calories"
+            id="caloriesPer100g"
             type="number"
             min="0"
-            value={calories}
-            onChange={(e) => setCalories(e.target.value)}
-            placeholder="0"
+            value={caloriesPer100g}
+            onChange={(e) => setCaloriesPer100g(e.target.value)}
+            placeholder="e.g., 165"
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="protein">Protein (g) *</Label>
+          <Label htmlFor="proteinPer100g">Protein (g per 100g) *</Label>
           <Input
-            id="protein"
+            id="proteinPer100g"
             type="number"
             min="0"
             step="0.1"
-            value={protein}
-            onChange={(e) => setProtein(e.target.value)}
-            placeholder="0"
+            value={proteinPer100g}
+            onChange={(e) => setProteinPer100g(e.target.value)}
+            placeholder="e.g., 31"
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="carbs">Carbs (g) *</Label>
+          <Label htmlFor="carbsPer100g">Carbs (g per 100g) *</Label>
           <Input
-            id="carbs"
+            id="carbsPer100g"
             type="number"
             min="0"
             step="0.1"
-            value={carbs}
-            onChange={(e) => setCarbs(e.target.value)}
-            placeholder="0"
+            value={carbsPer100g}
+            onChange={(e) => setCarbsPer100g(e.target.value)}
+            placeholder="e.g., 0"
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fat">Fat (g) *</Label>
+          <Label htmlFor="fatPer100g">Fat (g per 100g) *</Label>
           <Input
-            id="fat"
+            id="fatPer100g"
             type="number"
             min="0"
             step="0.1"
-            value={fat}
-            onChange={(e) => setFat(e.target.value)}
-            placeholder="0"
+            value={fatPer100g}
+            onChange={(e) => setFatPer100g(e.target.value)}
+            placeholder="e.g., 3.6"
             required
           />
         </div>
@@ -248,7 +252,7 @@ export function AddIngredientForm({
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>
                 Macros check out! Calculated:{" "}
-                {macroValidation.calculatedCalories} kcal
+                {macroValidation.calculatedCalories} kcal/100g
               </span>
             </div>
           ) : (
@@ -260,41 +264,38 @@ export function AddIngredientForm({
         </div>
       )}
 
-      {/* Portion */}
+      {/* Piece Information (Optional) */}
       <div className="space-y-2">
-        <Label htmlFor="portion">Portion Description *</Label>
-        <Input
-          id="portion"
-          value={portion}
-          onChange={(e) => setPortion(e.target.value)}
-          placeholder="e.g., 200g raw / 150g cooked"
-          required
-        />
-      </div>
-
-      {/* Weights Grid (Optional) */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="rawWeight">Raw Weight (g)</Label>
-          <Input
-            id="rawWeight"
-            type="number"
-            min="0"
-            value={rawWeight}
-            onChange={(e) => setRawWeight(e.target.value)}
-            placeholder="Optional"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="cookedWeight">Cooked Weight (g)</Label>
-          <Input
-            id="cookedWeight"
-            type="number"
-            min="0"
-            value={cookedWeight}
-            onChange={(e) => setCookedWeight(e.target.value)}
-            placeholder="Optional"
-          />
+        <Label>Piece Information (Optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          For countable items like eggs, slices of bread, etc. This allows
+          measuring by piece count instead of grams.
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="pieceWeightGrams" className="text-xs">
+              Weight per piece (g)
+            </Label>
+            <Input
+              id="pieceWeightGrams"
+              type="number"
+              min="0"
+              value={pieceWeightGrams}
+              onChange={(e) => setPieceWeightGrams(e.target.value)}
+              placeholder="e.g., 50 for an egg"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pieceName" className="text-xs">
+              Piece name (singular)
+            </Label>
+            <Input
+              id="pieceName"
+              value={pieceName}
+              onChange={(e) => setPieceName(e.target.value)}
+              placeholder="e.g., egg, slice"
+            />
+          </div>
         </div>
       </div>
 

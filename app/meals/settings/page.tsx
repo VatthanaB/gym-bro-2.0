@@ -23,7 +23,7 @@ import {
   useMealOptions,
   type MealOption,
 } from "@/lib/hooks/use-supabase";
-import type { Food } from "@/lib/types";
+import type { MealFood } from "@/lib/types";
 
 export default function MealSettingsPage() {
   const router = useRouter();
@@ -135,7 +135,7 @@ export default function MealSettingsPage() {
 
   const handleSaveOption = async (
     name: string,
-    foods: Food[]
+    foods: MealFood[]
   ): Promise<boolean> => {
     if (editingOption) {
       return await updateMealOption(editingOption.id, name, foods);
@@ -189,7 +189,7 @@ export default function MealSettingsPage() {
             label="Breakfast Options"
             mealOptions={breakfastOptions}
             currentFoods={getCurrentMealFoods("breakfast")}
-            onSelectOption={(foods: Food[]) =>
+            onSelectOption={(foods: MealFood[]) =>
               updateMealFoods("breakfast", foods)
             }
             onEditOption={handleEditOption}
@@ -204,7 +204,9 @@ export default function MealSettingsPage() {
             label="Snack Options"
             mealOptions={snackOptions}
             currentFoods={getCurrentMealFoods("snack1")}
-            onSelectOption={(foods: Food[]) => updateMealFoods("snack1", foods)}
+            onSelectOption={(foods: MealFood[]) =>
+              updateMealFoods("snack1", foods)
+            }
             onEditOption={handleEditOption}
             onDeleteOption={handleDeleteOption}
             onCreateOption={() => handleCreateOption("snack")}
