@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { LoadingPage } from "@/components/ui/loading"
 import { ProgressChart } from "@/components/progress-chart"
 import {
   useWorkoutLogs,
@@ -34,6 +35,8 @@ function formatFullDate(dateStr: string): string {
 export default function ProgressPage() {
   const [showWeightInput, setShowWeightInput] = useState(false)
   const [weightInput, setWeightInput] = useState("")
+  const [showTargetInput, setShowTargetInput] = useState(false)
+  const [targetInput, setTargetInput] = useState("")
 
   const { logs, isLoaded: logsLoaded } = useWorkoutLogs()
   const { weights, addWeight, getLatestWeight, isLoaded: weightLoaded } =
@@ -41,6 +44,11 @@ export default function ProgressPage() {
   const { profile, setProfile, isLoaded: profileLoaded } = useUserProfile()
 
   const isLoaded = logsLoaded && weightLoaded && profileLoaded
+
+  // Show loading if data isn't ready or profile is null
+  if (!isLoaded || !profile) {
+    return <LoadingPage />;
+  }
 
   const completedWorkouts = logs.filter((l) => l.completed)
   const latestWeight = getLatestWeight()
@@ -59,13 +67,15 @@ export default function ProgressPage() {
     setShowWeightInput(false)
   }
 
-  if (!isLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+  const handleUpdateTargetWeight = async () => {
+    const targetWeight = parseFloat(targetInput)
+    if (isNaN(targetWeight) || targetWeight <= 0) return
+
+    await setProfile({ targetWeight })
+    setTargetInput("")
+    setShowTargetInput(false)
   }
+
 
   return (
     <div className="px-4 pt-6">
@@ -148,14 +158,54 @@ export default function ProgressPage() {
           />
 
           {/* Goal Info */}
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-secondary/50 p-3">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-success" />
-              <span className="text-sm text-muted-foreground">Target</span>
+          <div className="mt-4 rounded-xl bg-secondary/50 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-success" />
+                <span className="text-sm text-muted-foreground">Target Weight</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowTargetInput(!showTargetInput)
+                  if (!showTargetInput) {
+                    setTargetInput(profile.targetWeight.toString())
+                  }
+                }}
+                className="gap-1 h-8 px-2"
+              >
+                {showTargetInput ? (
+                  <X className="h-3.5 w-3.5" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
+                {showTargetInput ? "Cancel" : "Edit"}
+              </Button>
             </div>
-            <span className="font-semibold text-foreground">
-              {profile.targetWeight} kg
-            </span>
+            
+            {showTargetInput ? (
+              <div className="mt-3 flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Enter target weight in kg"
+                  value={targetInput}
+                  onChange={(e) => setTargetInput(e.target.value)}
+                  className="h-10 rounded-xl"
+                  step="0.1"
+                />
+                <Button 
+                  onClick={handleUpdateTargetWeight} 
+                  className="h-10 rounded-xl px-6"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <span className="mt-2 block font-semibold text-foreground">
+                {profile.targetWeight} kg
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

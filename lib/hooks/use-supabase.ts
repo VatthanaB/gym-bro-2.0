@@ -586,54 +586,70 @@ interface DBUserProfile {
 }
 
 export function useUserProfile() {
-  const [profile, setProfile] = useState<UserProfile>({
-    name: "User",
-    currentWeight: 80,
-    targetWeight: 75,
-    height: 175,
-    startDate: new Date().toISOString().split("T")[0],
-    weekNumber: 1,
-  });
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const supabase = createClient();
 
   useEffect(() => {
+    // Wait for auth to finish loading before checking user
+    if (authLoading) {
+      return;
+    }
+
+    // If no user after auth loads, set loaded but don't set profile
     if (!user) {
       queueMicrotask(() => setIsLoaded(true));
       return;
     }
 
     async function fetchProfile() {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("user_id", user!.id)
-        .single();
+      try {
+        // RLS automatically filters by user_id, so we don't need to specify it
+        // Use limit(1) and handle as array to avoid 406 errors with single()
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("*")
+          .limit(1);
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching profile:", error);
+        if (error) {
+          // If it's a 406 or other error, log it but continue with defaults
+          console.error("Error fetching profile:", error);
+          setIsLoaded(true);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const dbProfile = data[0] as DBUserProfile;
+          setProfile({
+            name: dbProfile.name,
+            currentWeight: Number(dbProfile.current_weight),
+            targetWeight: Number(dbProfile.target_weight),
+            height: Number(dbProfile.height),
+            startDate: dbProfile.start_date,
+            weekNumber: dbProfile.week_number,
+          });
+        } else {
+          // If no profile exists, use default values
+          setProfile({
+            name: "User",
+            currentWeight: 80,
+            targetWeight: 75,
+            height: 175,
+            startDate: new Date().toISOString().split("T")[0],
+            weekNumber: 1,
+          });
+        }
+
         setIsLoaded(true);
-        return;
+      } catch (err) {
+        console.error("Unexpected error fetching profile:", err);
+        setIsLoaded(true);
       }
-
-      if (data) {
-        const dbProfile = data as DBUserProfile;
-        setProfile({
-          name: dbProfile.name,
-          currentWeight: Number(dbProfile.current_weight),
-          targetWeight: Number(dbProfile.target_weight),
-          height: Number(dbProfile.height),
-          startDate: dbProfile.start_date,
-          weekNumber: dbProfile.week_number,
-        });
-      }
-
-      setIsLoaded(true);
     }
 
     fetchProfile();
-  }, [user, supabase]);
+  }, [user, authLoading, supabase]);
 
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>) => {
@@ -658,6 +674,7 @@ export function useUserProfile() {
       if (updates.weekNumber !== undefined)
         dbUpdates.week_number = updates.weekNumber;
 
+      // RLS automatically filters by user_id, but we need to specify it for update
       const { error } = await supabase
         .from("user_profiles")
         .update(dbUpdates)
@@ -668,7 +685,21 @@ export function useUserProfile() {
         return;
       }
 
-      setProfile((prev) => ({ ...prev, ...updates }));
+      setProfile((prev) => {
+        if (!prev) {
+          // If profile doesn't exist yet, create it with updates
+          return {
+            name: "User",
+            currentWeight: 80,
+            targetWeight: 75,
+            height: 175,
+            startDate: new Date().toISOString().split("T")[0],
+            weekNumber: 1,
+            ...updates,
+          };
+        }
+        return { ...prev, ...updates };
+      });
     },
     [user, supabase]
   );

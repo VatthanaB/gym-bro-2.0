@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LoadingPage } from "@/components/ui/loading";
 import { WorkoutCard } from "@/components/workout-card";
 import {
   useWorkoutLogs,
@@ -112,12 +113,8 @@ export default function DashboardPage() {
     updateLog(todayLog.id, { completed: true });
   };
 
-  if (!isLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+  if (!isLoaded || !profile) {
+    return <LoadingPage />;
   }
 
   return (

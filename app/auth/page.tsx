@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -9,12 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { LoadingPage } from "@/components/ui/loading";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/use-supabase";
 
 type AuthMode = "signin" | "signup";
 
 export default function AuthPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +28,24 @@ export default function AuthPage() {
   const [name, setName] = useState("");
 
   const supabase = createClient();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/");
+      router.refresh();
+    }
+  }, [user, authLoading, router]);
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return <LoadingPage />;
+  }
+
+  // Show loading while redirecting
+  if (user) {
+    return <LoadingPage />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

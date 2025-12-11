@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Flame, Beef, RotateCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingPage } from "@/components/ui/loading";
 import { MealCard } from "@/components/meal-card";
 import { FoodSwapSheet } from "@/components/food-swap-sheet";
 import {
@@ -147,11 +148,7 @@ export default function MealsPage() {
   };
 
   if (!isLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <LoadingPage />;
   }
 
   return (

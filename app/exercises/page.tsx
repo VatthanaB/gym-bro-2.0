@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { LoadingPage } from "@/components/ui/loading"
 import { ExerciseItem } from "@/components/exercise-item"
 import { useExercises, useUserExerciseData } from "@/lib/hooks/use-supabase"
 import { cn } from "@/lib/utils"
@@ -87,11 +88,7 @@ export default function ExercisesPage() {
     search || bodySection !== "all" || category !== "all" || selectedMuscle
 
   if (!isLoaded || !isUserDataLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <LoadingPage />;
   }
 
   return (

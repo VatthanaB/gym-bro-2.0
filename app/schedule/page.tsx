@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Calendar, RotateCcw } from "lucide-react";
 import { WeekView } from "@/components/week-view";
 import { WorkoutCard } from "@/components/workout-card";
 import { Button } from "@/components/ui/button";
+import { LoadingPage } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 import {
   useWorkoutTemplates,
@@ -196,11 +197,7 @@ export default function SchedulePage() {
   const isViewingCurrentWeek = isCurrentWeek;
 
   if (!isLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <LoadingPage />;
   }
 
   return (
