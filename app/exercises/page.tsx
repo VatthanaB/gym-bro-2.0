@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExerciseItem } from "@/components/exercise-item"
-import { useExercises } from "@/lib/hooks/use-supabase"
+import { useExercises, useUserExerciseData } from "@/lib/hooks/use-supabase"
 import { cn } from "@/lib/utils"
 
 type BodySection = "all" | "upper" | "lower"
@@ -25,6 +25,7 @@ const muscleGroupLabels: Record<string, string> = {
 
 export default function ExercisesPage() {
   const { exercises: allExercises, getUpperBodyExercises, getLowerBodyExercises, isLoaded } = useExercises()
+  const { exerciseData, updateExerciseData, isLoaded: isUserDataLoaded } = useUserExerciseData()
   
   const [search, setSearch] = useState("")
   const [bodySection, setBodySection] = useState<BodySection>("all")
@@ -85,7 +86,7 @@ export default function ExercisesPage() {
   const hasActiveFilters =
     search || bodySection !== "all" || category !== "all" || selectedMuscle
 
-  if (!isLoaded) {
+  if (!isLoaded || !isUserDataLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -204,6 +205,8 @@ export default function ExercisesPage() {
               exercise={exercise}
               index={index}
               showWeight={true}
+              userData={exerciseData[exercise.id]}
+              onUpdateData={updateExerciseData}
             />
           ))
         ) : (

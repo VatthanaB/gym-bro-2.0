@@ -171,6 +171,152 @@ export function useExercises() {
 }
 
 // =============================================
+// USER EXERCISE DATA HOOK
+// =============================================
+
+export interface UserExerciseData {
+  exerciseId: string;
+  weight?: number;
+  sets?: number;
+  reps?: string;
+  notes?: string;
+}
+
+interface DBUserExerciseData {
+  id: string;
+  user_id: string;
+  exercise_id: string;
+  weight: number | null;
+  sets: number | null;
+  reps: string | null;
+  notes: string | null;
+}
+
+export function useUserExerciseData() {
+  const [exerciseData, setExerciseData] = useState<
+    Record<string, UserExerciseData>
+  >({});
+  const [isLoaded, setIsLoaded] = useState(false);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (!user) {
+      queueMicrotask(() => setIsLoaded(true));
+      return;
+    }
+
+    async function fetchExerciseData() {
+      const { data, error } = await supabase
+        .from("user_exercise_data")
+        .select("*")
+        .eq("user_id", user!.id);
+
+      if (error) {
+        console.error("Error fetching user exercise data:", error);
+        setIsLoaded(true);
+        return;
+      }
+
+      const dbData = (data as DBUserExerciseData[]) || [];
+      const transformed: Record<string, UserExerciseData> = {};
+
+      dbData.forEach((d) => {
+        transformed[d.exercise_id] = {
+          exerciseId: d.exercise_id,
+          weight: d.weight ?? undefined,
+          sets: d.sets ?? undefined,
+          reps: d.reps ?? undefined,
+          notes: d.notes ?? undefined,
+        };
+      });
+
+      setExerciseData(transformed);
+      setIsLoaded(true);
+    }
+
+    fetchExerciseData();
+  }, [user, supabase]);
+
+  const updateExerciseData = useCallback(
+    async (
+      exerciseId: string,
+      updates: Partial<Omit<UserExerciseData, "exerciseId">>
+    ) => {
+      if (!user) return;
+
+      const { error } = await supabase.from("user_exercise_data").upsert(
+        {
+          user_id: user.id,
+          exercise_id: exerciseId,
+          weight: updates.weight ?? null,
+          sets: updates.sets ?? null,
+          reps: updates.reps ?? null,
+          notes: updates.notes ?? null,
+        },
+        {
+          onConflict: "user_id,exercise_id",
+        }
+      );
+
+      if (error) {
+        console.error("Error updating exercise data:", error);
+        return;
+      }
+
+      setExerciseData((prev) => ({
+        ...prev,
+        [exerciseId]: {
+          ...prev[exerciseId],
+          exerciseId,
+          ...updates,
+        },
+      }));
+    },
+    [user, supabase]
+  );
+
+  const getExerciseData = useCallback(
+    (exerciseId: string): UserExerciseData | undefined => {
+      return exerciseData[exerciseId];
+    },
+    [exerciseData]
+  );
+
+  const clearExerciseData = useCallback(
+    async (exerciseId: string) => {
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("user_exercise_data")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("exercise_id", exerciseId);
+
+      if (error) {
+        console.error("Error clearing exercise data:", error);
+        return;
+      }
+
+      setExerciseData((prev) => {
+        const newData = { ...prev };
+        delete newData[exerciseId];
+        return newData;
+      });
+    },
+    [user, supabase]
+  );
+
+  return {
+    exerciseData,
+    updateExerciseData,
+    getExerciseData,
+    clearExerciseData,
+    isLoaded,
+  };
+}
+
+// =============================================
 // FOODS & MEALS HOOK
 // =============================================
 
