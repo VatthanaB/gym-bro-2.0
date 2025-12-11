@@ -449,12 +449,13 @@ export function FoodSwapSheet({
             </h4>
             <div className="space-y-2">
               {mealOptions.map((option) => {
+                // Use the already-calculated values from MealFood (based on quantity)
                 const optionCalories = option.foods.reduce(
-                  (sum, f) => sum + f.caloriesPer100g,
+                  (sum, f) => sum + f.calories,
                   0
                 );
                 const optionProtein = option.foods.reduce(
-                  (sum, f) => sum + f.proteinPer100g,
+                  (sum, f) => sum + f.protein,
                   0
                 );
                 const isCurrent = isCurrentOption(option);
