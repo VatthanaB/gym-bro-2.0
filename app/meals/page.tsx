@@ -3,7 +3,8 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
-import { Flame, Beef, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { Flame, Beef, RotateCcw, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/ui/loading";
@@ -13,9 +14,10 @@ import {
   useMeals,
   useUserMeals,
   useFoods,
+  useUserProfile,
+  useMealOptions,
   DAILY_TARGETS,
 } from "@/lib/hooks/use-supabase";
-import { breakfastOptions, snackOptions } from "@/lib/data/meals";
 import type { MealSlot, Food } from "@/lib/types";
 
 const MEAL_ORDER: MealSlot[] = [
@@ -36,12 +38,15 @@ export default function MealsPage() {
     resetAllMeals,
     isLoaded: prefsLoaded,
   } = useUserMeals();
+  const { isAdmin, isLoaded: profileLoaded } = useUserProfile();
+  const { getOptionsForSlot, isLoaded: optionsLoaded } = useMealOptions();
 
   const [swapSheetOpen, setSwapSheetOpen] = useState(false);
   const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
   const [tempFoods, setTempFoods] = useState<Food[]>([]);
 
-  const isLoaded = mealsLoaded && foodsLoaded && prefsLoaded;
+  const isLoaded =
+    mealsLoaded && foodsLoaded && prefsLoaded && profileLoaded && optionsLoaded;
 
   // Calculate daily totals based on custom or default meals
   const calculateTotals = () => {
@@ -99,8 +104,10 @@ export default function MealsPage() {
   // Get meal options for the current slot (breakfast/snacks only)
   const getMealOptionsForSlot = (slot: MealSlot | null) => {
     if (!slot) return undefined;
-    if (slot === "breakfast") return breakfastOptions;
-    if (slot === "snack1" || slot === "snack2") return snackOptions;
+    if (slot === "breakfast" || slot === "snack1" || slot === "snack2") {
+      const options = getOptionsForSlot(slot);
+      return options.length > 0 ? options : undefined;
+    }
     return undefined;
   };
 
@@ -164,17 +171,32 @@ export default function MealsPage() {
               Daily nutrition for fat loss
             </p>
           </div>
-          {hasAnyCustomizations && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-muted-foreground"
-              onClick={resetAllMeals}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset All
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {hasAnyCustomizations && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-muted-foreground"
+                onClick={resetAllMeals}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset All
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground"
+                asChild
+              >
+                <Link href="/meals/settings">
+                  <Settings className="h-5 w-5" />
+                  <span className="sr-only">Meal Settings</span>
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import type { Food, MealSlot, Meal } from "@/lib/types";
-import type { MealOption } from "@/lib/data/meals";
+import type { MealOption } from "@/lib/hooks/use-supabase";
 
 interface FoodSwapSheetProps {
   isOpen: boolean;
@@ -47,8 +47,10 @@ export function FoodSwapSheet({
   const swapOptions = getSwapOptions?.() || {};
 
   // Determine if this is a simple swap slot (breakfast/snacks)
-  const isSimpleSwapSlot = slot === "breakfast" || slot === "snack1" || slot === "snack2";
-  const hasMealOptions = isSimpleSwapSlot && mealOptions && mealOptions.length > 0;
+  const isSimpleSwapSlot =
+    slot === "breakfast" || slot === "snack1" || slot === "snack2";
+  const hasMealOptions =
+    isSimpleSwapSlot && mealOptions && mealOptions.length > 0;
 
   // Calculate current totals
   const totalCalories = currentFoods.reduce((sum, f) => sum + f.calories, 0);
@@ -115,8 +117,8 @@ export function FoodSwapSheet({
   // Check if current foods match a meal option
   const isCurrentOption = (option: MealOption) => {
     if (option.foods.length !== currentFoods.length) return false;
-    const currentIds = currentFoods.map(f => f.id).sort();
-    const optionIds = option.foods.map(f => f.id).sort();
+    const currentIds = currentFoods.map((f) => f.id).sort();
+    const optionIds = option.foods.map((f) => f.id).sort();
     return currentIds.every((id, i) => id === optionIds[i]);
   };
 
@@ -201,8 +203,14 @@ export function FoodSwapSheet({
             </h4>
             <div className="space-y-2">
               {mealOptions.map((option) => {
-                const optionCalories = option.foods.reduce((sum, f) => sum + f.calories, 0);
-                const optionProtein = option.foods.reduce((sum, f) => sum + f.protein, 0);
+                const optionCalories = option.foods.reduce(
+                  (sum, f) => sum + f.calories,
+                  0
+                );
+                const optionProtein = option.foods.reduce(
+                  (sum, f) => sum + f.protein,
+                  0
+                );
                 const isCurrent = isCurrentOption(option);
 
                 return (
@@ -229,7 +237,7 @@ export function FoodSwapSheet({
                         )}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {option.foods.map(f => f.name).join(" + ")}
+                        {option.foods.map((f) => f.name).join(" + ")}
                       </p>
                     </div>
                     <div className="text-right text-sm">

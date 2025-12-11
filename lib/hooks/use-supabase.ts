@@ -333,24 +333,89 @@ interface DBFood {
   food_bank_category: string;
 }
 
+interface DBCustomFood {
+  id: string;
+  created_by: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  portion: string;
+  raw_weight: number | null;
+  cooked_weight: number | null;
+  category: string;
+  food_bank_category: string;
+  created_at: string;
+}
+
 export function useFoods() {
   const [foods, setFoods] = useState<Food[]>([]);
   const [foodBank, setFoodBank] = useState<Record<string, Food[]>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const supabase = createClient();
 
-  useEffect(() => {
-    async function fetchFoods() {
-      const { data, error } = await supabase.from("foods").select("*");
+  const fetchFoods = useCallback(async () => {
+    // Fetch both regular foods and custom foods in parallel
+    const [foodsResult, customFoodsResult] = await Promise.all([
+      supabase.from("foods").select("*"),
+      supabase.from("custom_foods").select("*"),
+    ]);
 
-      if (error) {
-        console.error("Error fetching foods:", error);
-        setIsLoaded(true);
-        return;
+    if (foodsResult.error) {
+      console.error("Error fetching foods:", foodsResult.error);
+    }
+
+    // Custom foods might not exist yet (table not created), so don't fail on error
+    if (
+      customFoodsResult.error &&
+      !customFoodsResult.error.message.includes("does not exist")
+    ) {
+      console.error("Error fetching custom foods:", customFoodsResult.error);
+    }
+
+    const dbFoods = (foodsResult.data as DBFood[]) || [];
+    const dbCustomFoods = (customFoodsResult.data as DBCustomFood[]) || [];
+
+    // Transform regular foods
+    const transformedFoods: Food[] = dbFoods.map((f) => ({
+      id: f.id,
+      name: f.name,
+      calories: f.calories,
+      protein: f.protein,
+      carbs: f.carbs,
+      fat: f.fat,
+      portion: f.portion,
+      category: f.category as Food["category"],
+    }));
+
+    // Transform custom foods
+    const transformedCustomFoods: Food[] = dbCustomFoods.map((f) => ({
+      id: f.id,
+      name: f.name,
+      calories: f.calories,
+      protein: Number(f.protein),
+      carbs: Number(f.carbs),
+      fat: Number(f.fat),
+      portion: f.portion,
+      rawWeight: f.raw_weight ?? undefined,
+      cookedWeight: f.cooked_weight ?? undefined,
+      category: f.category as Food["category"],
+    }));
+
+    // Combine all foods
+    const allFoods = [...transformedFoods, ...transformedCustomFoods];
+    setFoods(allFoods);
+
+    // Group by food_bank_category (include both regular and custom)
+    const grouped: Record<string, Food[]> = {};
+
+    // Add regular foods to groups
+    dbFoods.forEach((f) => {
+      if (!grouped[f.food_bank_category]) {
+        grouped[f.food_bank_category] = [];
       }
-
-      const dbFoods = (data as DBFood[]) || [];
-      const transformed: Food[] = dbFoods.map((f) => ({
+      grouped[f.food_bank_category].push({
         id: f.id,
         name: f.name,
         calories: f.calories,
@@ -359,36 +424,171 @@ export function useFoods() {
         fat: f.fat,
         portion: f.portion,
         category: f.category as Food["category"],
-      }));
-
-      setFoods(transformed);
-
-      // Group by food_bank_category
-      const grouped: Record<string, Food[]> = {};
-      dbFoods.forEach((f) => {
-        if (!grouped[f.food_bank_category]) {
-          grouped[f.food_bank_category] = [];
-        }
-        grouped[f.food_bank_category].push({
-          id: f.id,
-          name: f.name,
-          calories: f.calories,
-          protein: f.protein,
-          carbs: f.carbs,
-          fat: f.fat,
-          portion: f.portion,
-          category: f.category as Food["category"],
-        });
       });
+    });
 
-      setFoodBank(grouped);
-      setIsLoaded(true);
-    }
+    // Add custom foods to groups
+    dbCustomFoods.forEach((f) => {
+      if (!grouped[f.food_bank_category]) {
+        grouped[f.food_bank_category] = [];
+      }
+      grouped[f.food_bank_category].push({
+        id: f.id,
+        name: f.name,
+        calories: f.calories,
+        protein: Number(f.protein),
+        carbs: Number(f.carbs),
+        fat: Number(f.fat),
+        portion: f.portion,
+        rawWeight: f.raw_weight ?? undefined,
+        cookedWeight: f.cooked_weight ?? undefined,
+        category: f.category as Food["category"],
+      });
+    });
 
-    fetchFoods();
+    setFoodBank(grouped);
+    setIsLoaded(true);
   }, [supabase]);
 
-  return { foods, foodBank, isLoaded };
+  useEffect(() => {
+    let ignore = false;
+
+    const load = async () => {
+      await fetchFoods();
+      if (ignore) return;
+    };
+
+    load();
+
+    return () => {
+      ignore = true;
+    };
+  }, [fetchFoods]);
+
+  return { foods, foodBank, isLoaded, refetch: fetchFoods };
+}
+
+// =============================================
+// CUSTOM FOODS HOOK (Admin only)
+// =============================================
+
+export interface CustomFoodInput {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  portion: string;
+  rawWeight?: number;
+  cookedWeight?: number;
+  category: Food["category"];
+  foodBankCategory: string;
+}
+
+// Validate that macros roughly match calories (within 15% tolerance)
+export function validateMacros(food: CustomFoodInput): {
+  valid: boolean;
+  calculatedCalories: number;
+  message?: string;
+} {
+  const calculatedCalories = Math.round(
+    food.protein * 4 + food.carbs * 4 + food.fat * 9
+  );
+  const tolerance = food.calories * 0.15; // 15% tolerance
+  const diff = Math.abs(calculatedCalories - food.calories);
+
+  if (diff > tolerance) {
+    return {
+      valid: false,
+      calculatedCalories,
+      message: `Macros calculate to ${calculatedCalories} kcal but you entered ${
+        food.calories
+      } kcal. Difference: ${diff > 0 ? "+" : ""}${
+        calculatedCalories - food.calories
+      } kcal`,
+    };
+  }
+
+  return { valid: true, calculatedCalories };
+}
+
+export function useCustomFoods() {
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  const addCustomFood = useCallback(
+    async (food: CustomFoodInput): Promise<Food | null> => {
+      if (!user) {
+        setError("You must be logged in to add foods");
+        return null;
+      }
+
+      setIsAdding(true);
+      setError(null);
+
+      try {
+        const { data, error: insertError } = await supabase
+          .from("custom_foods")
+          .insert({
+            created_by: user.id,
+            name: food.name,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            portion: food.portion,
+            raw_weight: food.rawWeight ?? null,
+            cooked_weight: food.cookedWeight ?? null,
+            category: food.category,
+            food_bank_category: food.foodBankCategory,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          // Check for admin permission error
+          if (insertError.message.includes("policy")) {
+            setError(
+              "You don't have permission to add foods. Admin access required."
+            );
+          } else {
+            setError(insertError.message);
+          }
+          return null;
+        }
+
+        const newFood: Food = {
+          id: data.id,
+          name: data.name,
+          calories: data.calories,
+          protein: Number(data.protein),
+          carbs: Number(data.carbs),
+          fat: Number(data.fat),
+          portion: data.portion,
+          rawWeight: data.raw_weight ?? undefined,
+          cookedWeight: data.cooked_weight ?? undefined,
+          category: data.category as Food["category"],
+        };
+
+        return newFood;
+      } catch (err) {
+        setError("Failed to add food");
+        console.error("Error adding custom food:", err);
+        return null;
+      } finally {
+        setIsAdding(false);
+      }
+    },
+    [user, supabase]
+  );
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  return { addCustomFood, isAdding, error, clearError, validateMacros };
 }
 
 interface DBMeal {
@@ -584,10 +784,16 @@ interface DBUserProfile {
   height: number;
   start_date: string;
   week_number: number;
+  is_admin: boolean;
+}
+
+// Extended UserProfile with admin flag
+export interface UserProfileWithAdmin extends UserProfile {
+  isAdmin: boolean;
 }
 
 export function useUserProfile() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfileWithAdmin | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const supabase = createClient();
@@ -629,6 +835,7 @@ export function useUserProfile() {
             height: Number(dbProfile.height),
             startDate: dbProfile.start_date,
             weekNumber: dbProfile.week_number,
+            isAdmin: dbProfile.is_admin ?? false,
           });
         } else {
           // If no profile exists, use default values
@@ -639,6 +846,7 @@ export function useUserProfile() {
             height: 175,
             startDate: new Date().toISOString().split("T")[0],
             weekNumber: 1,
+            isAdmin: false,
           });
         }
 
@@ -696,6 +904,7 @@ export function useUserProfile() {
             height: 175,
             startDate: new Date().toISOString().split("T")[0],
             weekNumber: 1,
+            isAdmin: false,
             ...updates,
           };
         }
@@ -705,7 +914,12 @@ export function useUserProfile() {
     [user, supabase]
   );
 
-  return { profile, setProfile: updateProfile, isLoaded };
+  return {
+    profile,
+    setProfile: updateProfile,
+    isLoaded,
+    isAdmin: profile?.isAdmin ?? false,
+  };
 }
 
 // =============================================
@@ -1487,6 +1701,200 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
     hasCustomizations,
     weekStart,
     isLoaded,
+  };
+}
+
+// =============================================
+// MEAL OPTIONS HOOK (Admin editable meal presets)
+// =============================================
+
+export interface MealOption {
+  id: string;
+  slot: "breakfast" | "snack";
+  name: string;
+  foods: Food[];
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface DBMealOption {
+  id: string;
+  slot: string;
+  name: string;
+  foods: Food[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useMealOptions() {
+  const [mealOptions, setMealOptions] = useState<MealOption[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  const fetchMealOptions = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("meal_options")
+      .select("*")
+      .order("name");
+
+    if (error) {
+      // Table might not exist yet
+      if (!error.message.includes("does not exist")) {
+        console.error("Error fetching meal options:", error);
+      }
+      setIsLoaded(true);
+      return;
+    }
+
+    const dbOptions = (data as DBMealOption[]) || [];
+    const transformed: MealOption[] = dbOptions.map((opt) => ({
+      id: opt.id,
+      slot: opt.slot as MealOption["slot"],
+      name: opt.name,
+      foods: opt.foods,
+      createdBy: opt.created_by ?? undefined,
+      createdAt: opt.created_at,
+      updatedAt: opt.updated_at,
+    }));
+
+    setMealOptions(transformed);
+    setIsLoaded(true);
+  }, [supabase]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const load = async () => {
+      await fetchMealOptions();
+      if (ignore) return;
+    };
+
+    load();
+
+    return () => {
+      ignore = true;
+    };
+  }, [fetchMealOptions]);
+
+  // Get options for a specific slot
+  const getOptionsForSlot = useCallback(
+    (slot: MealSlot): MealOption[] => {
+      if (slot === "breakfast") {
+        return mealOptions.filter((opt) => opt.slot === "breakfast");
+      }
+      // snack1 and snack2 both use "snack" options
+      if (slot === "snack1" || slot === "snack2") {
+        return mealOptions.filter((opt) => opt.slot === "snack");
+      }
+      return [];
+    },
+    [mealOptions]
+  );
+
+  // Add a new meal option
+  const addMealOption = useCallback(
+    async (
+      slot: "breakfast" | "snack",
+      name: string,
+      foods: Food[]
+    ): Promise<MealOption | null> => {
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from("meal_options")
+        .insert({
+          slot,
+          name,
+          foods,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error adding meal option:", error);
+        return null;
+      }
+
+      const newOption: MealOption = {
+        id: data.id,
+        slot: data.slot as MealOption["slot"],
+        name: data.name,
+        foods: data.foods,
+        createdBy: data.created_by,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+
+      setMealOptions((prev) => [...prev, newOption]);
+      return newOption;
+    },
+    [user, supabase]
+  );
+
+  // Update an existing meal option
+  const updateMealOption = useCallback(
+    async (id: string, name: string, foods: Food[]): Promise<boolean> => {
+      if (!user) return false;
+
+      const { error } = await supabase
+        .from("meal_options")
+        .update({
+          name,
+          foods,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Error updating meal option:", error);
+        return false;
+      }
+
+      setMealOptions((prev) =>
+        prev.map((opt) =>
+          opt.id === id
+            ? { ...opt, name, foods, updatedAt: new Date().toISOString() }
+            : opt
+        )
+      );
+      return true;
+    },
+    [user, supabase]
+  );
+
+  // Delete a meal option
+  const deleteMealOption = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!user) return false;
+
+      const { error } = await supabase
+        .from("meal_options")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error("Error deleting meal option:", error);
+        return false;
+      }
+
+      setMealOptions((prev) => prev.filter((opt) => opt.id !== id));
+      return true;
+    },
+    [user, supabase]
+  );
+
+  return {
+    mealOptions,
+    isLoaded,
+    getOptionsForSlot,
+    addMealOption,
+    updateMealOption,
+    deleteMealOption,
+    refetch: fetchMealOptions,
   };
 }
 
