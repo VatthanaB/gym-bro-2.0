@@ -1,7 +1,7 @@
 -- =============================================
 -- GYM BRO 2.0 - SEED DATA
 -- Run this AFTER the migration
--- Updated for 1,900 cal / 170g protein plan
+-- Updated for 1,900-2,000 cal / 200g+ protein plan (600g meat daily)
 -- =============================================
 
 -- =============================================
@@ -117,21 +117,34 @@ INSERT INTO public.exercises (id, name, category, muscle_group, body_section, se
   'Best glute isolation exercise.', 40, 'kg');
 
 -- =============================================
--- FOODS - Updated for 1,900 cal / 170g protein plan
+-- FOODS - Updated for 1,900-2,000 cal / 200g+ protein plan (600g meat daily)
 -- =============================================
 
 INSERT INTO public.foods (id, name, calories, protein, carbs, fat, portion, raw_weight, cooked_weight, category, food_bank_category) VALUES
 -- Breakfast proteins (for individual swapping)
 ('eggs-2', 'Whole Eggs', 144, 13, 1, 10, '2 eggs', 100, 100, 'protein', 'breakfastProteins'),
 ('eggs-3', 'Whole Eggs', 216, 19, 1, 14, '3 eggs', 150, 150, 'protein', 'breakfastProteins'),
+('eggs-4', 'Whole Eggs', 294, 25, 1, 19, '4 eggs', 200, 200, 'protein', 'breakfastProteins'),
 ('greek-yogurt-100', 'Greek Yogurt (0%)', 65, 10, 4, 0, '100g', 100, 100, 'dairy', 'breakfastProteins'),
+('greek-yogurt-2pct-100', 'Greek Yogurt (2%)', 97, 10, 4, 2, '100g', 100, 100, 'dairy', 'breakfastProteins'),
 
--- Breakfast carbs (smaller portions for 1,900 cal plan)
+-- Breakfast carbs
 ('toast-1', 'Whole Grain Toast', 74, 4, 12, 1, '1 slice', 30, 30, 'carb', 'breakfastCarbs'),
+('toast-2', 'Whole Grain Toast', 148, 8, 24, 2, '2 slices', 60, 60, 'carb', 'breakfastCarbs'),
 ('toast-half', 'Whole Grain Toast', 37, 2, 6, 1, '½ slice', 15, 15, 'carb', 'breakfastCarbs'),
 ('oats-40', 'Oats', 156, 7, 27, 3, '40g dry', 40, 120, 'carb', 'breakfastCarbs'),
+('oats-50', 'Oats', 195, 8, 34, 4, '50g dry', 50, 150, 'carb', 'breakfastCarbs'),
+('butter-5g', 'Butter', 36, 0, 0, 4, '5g', 5, 5, 'fat', 'breakfastCarbs'),
+('honey-10g', 'Honey', 30, 0, 8, 0, '10g', 10, 10, 'carb', 'breakfastCarbs'),
 
--- Lunch proteins (300g raw)
+-- Lunch proteins (400g raw - new standard for high protein plan)
+('chicken-400', 'Chicken Breast', 484, 92, 0, 10, '400g raw / 295g cooked', 400, 295, 'protein', 'lunchProteins'),
+('salmon-400', 'Salmon Fillet', 832, 82, 0, 53, '400g raw / 340g cooked', 400, 340, 'protein', 'lunchProteins'),
+('tuna-steak-400', 'Tuna Steak', 576, 93, 0, 20, '400g raw / 340g cooked', 400, 340, 'protein', 'lunchProteins'),
+('beef-lean-400', 'Lean Beef', 600, 88, 0, 28, '400g raw / 295g cooked', 400, 295, 'protein', 'lunchProteins'),
+('turkey-400', 'Turkey Breast', 444, 96, 0, 6, '400g raw / 295g cooked', 400, 295, 'protein', 'lunchProteins'),
+('fish-white-400', 'White Fish (Cod/Haddock)', 328, 72, 0, 3, '400g raw / 340g cooked', 400, 340, 'protein', 'lunchProteins'),
+('prawns-400', 'Prawns', 340, 80, 0, 3, '400g raw / 360g cooked', 400, 360, 'protein', 'lunchProteins'),
 ('chicken-300', 'Chicken Breast', 345, 69, 0, 8, '300g raw / 225g cooked', 300, 225, 'protein', 'lunchProteins'),
 ('salmon-300', 'Salmon Fillet', 618, 61, 0, 40, '300g raw / 255g cooked', 300, 255, 'protein', 'lunchProteins'),
 ('tuna-steak-300', 'Tuna Steak', 432, 70, 0, 15, '300g raw / 255g cooked', 300, 255, 'protein', 'lunchProteins'),
@@ -140,7 +153,15 @@ INSERT INTO public.foods (id, name, calories, protein, carbs, fat, portion, raw_
 ('fish-white-300', 'White Fish (Cod/Haddock)', 246, 54, 0, 2, '300g raw / 255g cooked', 300, 255, 'protein', 'lunchProteins'),
 ('prawns-300', 'Prawns', 255, 60, 0, 2, '300g raw / 270g cooked', 300, 270, 'protein', 'lunchProteins'),
 
--- Dinner proteins (150g raw)
+-- Dinner proteins (200g raw - new standard for high protein plan)
+('chicken-200', 'Chicken Breast', 242, 46, 0, 5, '200g raw / 145g cooked', 200, 145, 'protein', 'dinnerProteins'),
+('salmon-200', 'Salmon Fillet', 416, 41, 0, 27, '200g raw / 170g cooked', 200, 170, 'protein', 'dinnerProteins'),
+('fish-white-200', 'White Fish (Cod/Haddock)', 164, 36, 0, 1, '200g raw / 170g cooked', 200, 170, 'protein', 'dinnerProteins'),
+('beef-lean-200', 'Lean Beef/Steak', 300, 44, 0, 14, '200g raw / 145g cooked', 200, 145, 'protein', 'dinnerProteins'),
+('pork-tenderloin-200', 'Pork Tenderloin', 244, 44, 0, 7, '200g raw / 170g cooked', 200, 170, 'protein', 'dinnerProteins'),
+('turkey-200', 'Turkey Breast', 222, 48, 0, 4, '200g raw / 145g cooked', 200, 145, 'protein', 'dinnerProteins'),
+('tuna-steak-200', 'Tuna Steak', 288, 47, 0, 10, '200g raw / 170g cooked', 200, 170, 'protein', 'dinnerProteins'),
+('prawns-200', 'Prawns', 170, 40, 0, 2, '200g raw / 180g cooked', 200, 180, 'protein', 'dinnerProteins'),
 ('chicken-150', 'Chicken Breast', 173, 35, 0, 4, '150g raw / 113g cooked', 150, 113, 'protein', 'dinnerProteins'),
 ('salmon-150', 'Salmon Fillet', 309, 31, 0, 20, '150g raw / 128g cooked', 150, 128, 'protein', 'dinnerProteins'),
 ('fish-white-150', 'White Fish (Cod/Haddock)', 123, 27, 0, 1, '150g raw / 128g cooked', 150, 128, 'protein', 'dinnerProteins'),
@@ -148,9 +169,16 @@ INSERT INTO public.foods (id, name, calories, protein, carbs, fat, portion, raw_
 ('pork-tenderloin-150', 'Pork Tenderloin', 183, 33, 0, 5, '150g raw / 128g cooked', 150, 128, 'protein', 'dinnerProteins'),
 ('turkey-150', 'Turkey Breast', 167, 36, 0, 3, '150g raw / 113g cooked', 150, 113, 'protein', 'dinnerProteins'),
 
--- Lunch carbs (70g dry or 200g potato)
+-- Lunch carbs (80g for lean proteins, 60g for salmon/beef, or 230g potato for tuna)
+('rice-80', 'Rice (White or Brown)', 288, 6, 63, 1, '80g dry / 240g cooked', 80, 240, 'carb', 'lunchCarbs'),
+('pasta-80', 'Pasta', 297, 10, 59, 1, '80g dry / 200g cooked', 80, 200, 'carb', 'lunchCarbs'),
+('quinoa-80', 'Quinoa', 294, 11, 51, 5, '80g dry / 240g cooked', 80, 240, 'carb', 'lunchCarbs'),
+('couscous-80', 'Couscous', 300, 10, 62, 0, '80g dry / 200g cooked', 80, 200, 'carb', 'lunchCarbs'),
+('potato-230', 'Potatoes', 177, 5, 40, 0, '230g raw / 213g cooked', 230, 213, 'carb', 'lunchCarbs'),
 ('rice-70', 'Rice (White or Brown)', 252, 5, 55, 1, '70g dry / 210g cooked', 70, 210, 'carb', 'lunchCarbs'),
+('rice-60', 'Rice (White or Brown)', 216, 4, 47, 1, '60g dry / 180g cooked', 60, 180, 'carb', 'lunchCarbs'),
 ('pasta-70', 'Pasta', 260, 9, 52, 1, '70g dry / 175g cooked', 70, 175, 'carb', 'lunchCarbs'),
+('pasta-60', 'Pasta', 223, 8, 44, 1, '60g dry / 150g cooked', 60, 150, 'carb', 'lunchCarbs'),
 ('potato-200', 'Potatoes', 154, 4, 35, 0, '200g raw / 185g cooked', 200, 185, 'carb', 'lunchCarbs'),
 ('quinoa-70', 'Quinoa', 258, 10, 45, 4, '70g dry / 210g cooked', 70, 210, 'carb', 'lunchCarbs'),
 ('couscous-70', 'Couscous', 263, 9, 54, 0, '70g dry / 175g cooked', 70, 175, 'carb', 'lunchCarbs'),
@@ -176,16 +204,25 @@ INSERT INTO public.foods (id, name, calories, protein, carbs, fat, portion, raw_
 ('mixed-roasted-veg-300', 'Mixed Roasted Veg', 90, 6, 18, 1, '300g raw / 255g cooked', 300, 255, 'vegetable', 'dinnerVegetables'),
 ('large-salad-300', 'Large Salad', 60, 4, 11, 1, '300g', 300, 300, 'vegetable', 'dinnerVegetables'),
 
--- Snack proteins (150g portions for 1,900 cal plan)
-('cottage-cheese-150', 'Cottage Cheese', 135, 17, 5, 4, '150g', 150, 150, 'dairy', 'snackProteins'),
-('cottage-cheese-100', 'Cottage Cheese', 90, 11, 3, 3, '100g', 100, 100, 'dairy', 'snackProteins'),
+-- Snack proteins (updated for high protein plan)
+('cottage-cheese-200', 'Cottage Cheese', 196, 22, 7, 5, '200g', 200, 200, 'dairy', 'snackProteins'),
+('cottage-cheese-150', 'Cottage Cheese', 147, 17, 5, 4, '150g', 150, 150, 'dairy', 'snackProteins'),
+('cottage-cheese-100', 'Cottage Cheese', 98, 11, 3, 3, '100g', 100, 100, 'dairy', 'snackProteins'),
+('greek-yogurt-200', 'Greek Yogurt (0%)', 120, 20, 8, 0, '200g', 200, 200, 'dairy', 'snackProteins'),
 ('greek-yogurt-150', 'Greek Yogurt (0%)', 100, 15, 6, 0, '150g', 150, 150, 'dairy', 'snackProteins'),
-('greek-yogurt-50', 'Greek Yogurt (0%)', 33, 5, 2, 0, '50g', 50, 50, 'dairy', 'snackProteins'),
+('greek-yogurt-50', 'Greek Yogurt (0%)', 48, 5, 2, 0, '50g', 50, 50, 'dairy', 'snackProteins'),
+('protein-shake-30', 'Protein Shake', 120, 27, 2, 1, '30g powder + water', 30, 300, 'protein', 'snackProteins'),
+('protein-shake-30-milk', 'Protein Shake + Milk', 190, 34, 9, 1, '30g powder + 200ml skim milk', 230, 500, 'protein', 'snackProteins'),
 ('protein-shake-25', 'Protein Shake', 100, 23, 2, 1, '25g powder + water', 25, 250, 'protein', 'snackProteins'),
-('tuna-100', 'Canned Tuna', 110, 24, 0, 1, '100g drained', 100, 100, 'protein', 'snackProteins'),
+('tuna-100', 'Canned Tuna', 116, 26, 0, 1, '100g drained', 100, 100, 'protein', 'snackProteins'),
 ('boiled-eggs-2', 'Boiled Eggs', 156, 13, 1, 11, '2 eggs', 100, 100, 'protein', 'snackProteins'),
+('berries-30g', 'Berries', 17, 0, 4, 0, '30g', 30, 30, 'vegetable', 'snackProteins'),
+('crackers-20g', 'Crackers', 90, 2, 12, 4, '20g (5 crackers)', 20, 20, 'carb', 'snackProteins'),
+('skim-milk-200ml', 'Skim Milk', 70, 7, 10, 0, '200ml', 200, 200, 'dairy', 'snackProteins'),
+('protein-bar', 'Protein Bar', 215, 22, 20, 6, '1 bar (60g)', 60, 60, 'protein', 'snackProteins'),
 
--- Fats - Lunch: 8ml (½ tbsp), Dinner: 5ml (1 tsp)
+-- Fats - Lunch: 10ml (2 tsp), Dinner: 10ml (2 tsp)
+('olive-oil-10ml', 'Olive Oil', 88, 0, 0, 10, '10ml (2 tsp)', 10, 10, 'fat', 'fats'),
 ('olive-oil-8ml', 'Olive Oil (Lunch)', 63, 0, 0, 7, '8ml (½ tbsp)', 8, 8, 'fat', 'fats'),
 ('olive-oil-5ml', 'Olive Oil (Dinner)', 40, 0, 0, 5, '5ml (1 tsp)', 5, 5, 'fat', 'fats'),
 ('avocado-half', 'Avocado', 120, 1, 6, 11, '½ avocado', 75, 75, 'fat', 'fats'),
@@ -194,48 +231,48 @@ INSERT INTO public.foods (id, name, calories, protein, carbs, fat, portion, raw_
 ('peanut-butter-1tbsp', 'Peanut Butter', 95, 4, 3, 8, '1 tbsp', 16, 16, 'fat', 'fats'),
 
 -- Additional snack items
-('cucumber-100', 'Cucumber', 15, 1, 4, 0, '100g', 100, 100, 'vegetable', 'snackProteins');
+('cucumber-100', 'Cucumber', 8, 0, 2, 0, '100g', 100, 100, 'vegetable', 'lunchVegetables');
 
 -- =============================================
--- MEALS - Updated for 1,900 cal / 170g protein plan
+-- MEALS - Updated for 1,900-2,000 cal / 200g+ protein plan (600g meat daily)
 -- =============================================
 
 INSERT INTO public.meals (id, slot, label, target_calories, target_protein, notes) VALUES
-('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'breakfast', 'Breakfast', 450, 35, 'Eggs + smaller carb (done in 5 minutes)'),
-('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'snack1', 'Morning Snack', 200, 25, 'Optional add: 50g berries or cucumber'),
-('c3d4e5f6-a7b8-9012-cdef-123456789012', 'lunch', 'Lunch', 650, 60, 'PROTEIN + CARB + VEG + OIL - Biggest meal of the day'),
-('d4e5f6a7-b8c9-0123-defa-234567890123', 'snack2', 'Afternoon Snack', 200, 25, 'Can swap for cottage cheese, tuna tin, or 2 eggs + nuts'),
-('e5f6a7b8-c9d0-1234-efab-345678901234', 'dinner', 'Dinner', 400, 25, 'PROTEIN + VEG ONLY (NO CARBS) - Season heavily with salt, pepper, garlic, herbs');
+('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'breakfast', 'Breakfast', 400, 30, 'Option C: 4 eggs + 1 toast (368 cal, 29g protein)'),
+('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'snack1', 'Morning Snack', 230, 23, 'Option A: 200g cottage cheese (196 cal, 22g protein)'),
+('c3d4e5f6-a7b8-9012-cdef-123456789012', 'lunch', 'Lunch', 850, 95, '400g PROTEIN + 80g CARB + 200g VEG + 10ml OIL (928 cal, 104g protein)'),
+('d4e5f6a7-b8c9-0123-defa-234567890123', 'snack2', 'Afternoon Snack', 230, 23, 'Option C: Protein shake + milk (190 cal, 34g protein)'),
+('e5f6a7b8-c9d0-1234-efab-345678901234', 'dinner', 'Dinner', 450, 45, '200g PROTEIN + 300g VEG + 10ml OIL (NO CARBS) - Season heavily with salt, pepper, garlic, herbs');
 
 -- =============================================
--- MEAL FOODS (Default meal compositions for 1,900 cal plan)
+-- MEAL FOODS (Default meal compositions for 1,900-2,000 cal / 200g+ protein plan)
 -- =============================================
 
--- Breakfast: 3 eggs + 1 toast (290 cal, 23g protein)
+-- Breakfast: 4 eggs + 1 toast (368 cal, 29g protein)
 INSERT INTO public.meal_foods (meal_id, food_id) VALUES
-('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'eggs-3'),
+('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'eggs-4'),
 ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'toast-1');
 
--- Morning Snack: 150g cottage cheese (135 cal, 17g protein)
+-- Morning Snack: 200g cottage cheese (196 cal, 22g protein)
 INSERT INTO public.meal_foods (meal_id, food_id) VALUES
-('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'cottage-cheese-150');
+('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'cottage-cheese-200');
 
--- Lunch: chicken (300g) + rice (70g) + broccoli (200g) + olive oil (8ml)
+-- Lunch: chicken (400g) + rice (80g) + broccoli (200g) + olive oil (10ml)
 INSERT INTO public.meal_foods (meal_id, food_id) VALUES
-('c3d4e5f6-a7b8-9012-cdef-123456789012', 'chicken-300'),
-('c3d4e5f6-a7b8-9012-cdef-123456789012', 'rice-70'),
+('c3d4e5f6-a7b8-9012-cdef-123456789012', 'chicken-400'),
+('c3d4e5f6-a7b8-9012-cdef-123456789012', 'rice-80'),
 ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'broccoli-200'),
-('c3d4e5f6-a7b8-9012-cdef-123456789012', 'olive-oil-8ml');
+('c3d4e5f6-a7b8-9012-cdef-123456789012', 'olive-oil-10ml');
 
--- Afternoon Snack: Protein shake (25g powder)
+-- Afternoon Snack: Protein shake (30g powder + 200ml skim milk)
 INSERT INTO public.meal_foods (meal_id, food_id) VALUES
-('d4e5f6a7-b8c9-0123-defa-234567890123', 'protein-shake-25');
+('d4e5f6a7-b8c9-0123-defa-234567890123', 'protein-shake-30-milk');
 
--- Dinner: chicken (150g) + broccoli (300g) + olive oil (5ml)
+-- Dinner: chicken (200g) + broccoli (300g) + olive oil (10ml)
 INSERT INTO public.meal_foods (meal_id, food_id) VALUES
-('e5f6a7b8-c9d0-1234-efab-345678901234', 'chicken-150'),
+('e5f6a7b8-c9d0-1234-efab-345678901234', 'chicken-200'),
 ('e5f6a7b8-c9d0-1234-efab-345678901234', 'broccoli-300'),
-('e5f6a7b8-c9d0-1234-efab-345678901234', 'olive-oil-5ml');
+('e5f6a7b8-c9d0-1234-efab-345678901234', 'olive-oil-10ml');
 
 -- =============================================
 -- WORKOUT TEMPLATES

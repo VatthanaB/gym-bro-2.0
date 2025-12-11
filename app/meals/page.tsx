@@ -113,7 +113,7 @@ export default function MealsPage() {
     (foods) => foods.length > 0
   );
 
-  // Get swap options based on food bank categories (updated for 1,900 cal plan)
+  // Get swap options based on food bank categories (updated for 1,900-2,000 cal / 200g+ protein plan)
   const getSwapOptionsForSlot = (slot: MealSlot): Record<string, Food[]> => {
     switch (slot) {
       case "breakfast":
@@ -129,15 +129,17 @@ export default function MealsPage() {
         };
       case "lunch":
         return {
-          "Proteins (300g raw)": foodBank.lunchProteins || [],
-          "Carbs (70g dry)": foodBank.lunchCarbs || [],
+          "Proteins (400g raw)": foodBank.lunchProteins || [],
+          "Carbs (80g for lean, 60g for salmon/beef)":
+            foodBank.lunchCarbs || [],
           "Vegetables (200g raw)": foodBank.lunchVegetables || [],
-          "Oil (8ml)": foodBank.fats || [],
+          "Oil (10ml)": foodBank.fats || [],
         };
       case "dinner":
         return {
-          "Proteins (150g raw)": foodBank.dinnerProteins || [],
+          "Proteins (200g raw)": foodBank.dinnerProteins || [],
           "Vegetables (300g raw)": foodBank.dinnerVegetables || [],
+          "Oil (10ml)": foodBank.fats || [],
         };
       default:
         return {};
@@ -153,7 +155,7 @@ export default function MealsPage() {
   }
 
   return (
-    <div className="px-4 pt-6 pb-24">
+    <div className="px-4 pt-6">
       {/* Header */}
       <header className="mb-6">
         <div className="flex items-start justify-between">

@@ -26,7 +26,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-background antialiased">
-        <main className="mx-auto min-h-screen max-w-lg pb-24">{children}</main>
+        <main
+          className="mx-auto min-h-screen max-w-lg"
+          style={{
+            paddingBottom: "calc(4rem + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          {children}
+        </main>
         <BottomNav />
       </body>
     </html>

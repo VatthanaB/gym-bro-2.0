@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
       {/* Action Button */}
       {todaysWorkout && todaysWorkout.type !== "rest" && (
-        <div className="fixed bottom-24 left-0 right-0 px-4">
+        <div className="fixed left-0 right-0 px-4" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem)' }}>
           <div className="mx-auto max-w-lg">
             {!todayLog ? (
               <Button

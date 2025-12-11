@@ -920,10 +920,10 @@ export function useUserMeals() {
 }
 
 // =============================================
-// DAILY TARGETS (Constants) - Updated for 1,900 cal / 170g protein plan
+// DAILY TARGETS (Constants) - Updated for 1,900-2,000 cal / 200g+ protein plan (600g meat daily)
 // =============================================
 
 export const DAILY_TARGETS = {
-  calories: 1900,
-  protein: 170,
+  calories: 1950,
+  protein: 200,
 };
