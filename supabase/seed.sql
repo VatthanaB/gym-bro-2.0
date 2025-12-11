@@ -1,5 +1,5 @@
 -- =============================================
--- GYM BUDDY 2.0 - SEED DATA
+-- GYM BRO 2.0 - SEED DATA
 -- Run this AFTER the migration
 -- Updated for 1,900 cal / 170g protein plan
 -- =============================================

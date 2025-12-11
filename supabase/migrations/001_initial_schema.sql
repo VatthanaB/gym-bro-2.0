@@ -1,5 +1,5 @@
 -- =============================================
--- GYM BUDDY 2.0 - DATABASE SCHEMA
+-- GYM BRO 2.0 - DATABASE SCHEMA
 -- Run this in Supabase SQL Editor
 -- =============================================
 

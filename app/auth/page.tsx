@@ -1,36 +1,36 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export const dynamic = 'force-dynamic'
-import { Dumbbell, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { createClient } from "@/lib/supabase/client"
+export const dynamic = "force-dynamic";
+import { Dumbbell, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
-type AuthMode = "signin" | "signup"
+type AuthMode = "signin" | "signup";
 
 export default function AuthPage() {
-  const router = useRouter()
-  const [mode, setMode] = useState<AuthMode>("signin")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const router = useRouter();
+  const [mode, setMode] = useState<AuthMode>("signin");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
 
-  const supabase = createClient()
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setMessage(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setMessage(null);
 
     try {
       if (mode === "signup") {
@@ -42,28 +42,28 @@ export default function AuthPage() {
               name: name || "New User",
             },
           },
-        })
+        });
 
-        if (error) throw error
+        if (error) throw error;
 
-        setMessage("Check your email to confirm your account!")
+        setMessage("Check your email to confirm your account!");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
-        })
+        });
 
-        if (error) throw error
+        if (error) throw error;
 
-        router.push("/")
-        router.refresh()
+        router.push("/");
+        router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4">
@@ -73,7 +73,7 @@ export default function AuthPage() {
           <Dumbbell className="h-8 w-8 text-primary" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Gym Buddy
+          Gym Bro
         </h1>
         <p className="mt-2 text-muted-foreground">
           {mode === "signin"
@@ -180,9 +180,9 @@ export default function AuthPage() {
             <button
               type="button"
               onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin")
-                setError(null)
-                setMessage(null)
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+                setMessage(null);
               }}
               className="mt-1 text-sm font-semibold text-primary hover:underline"
             >
@@ -197,6 +197,5 @@ export default function AuthPage() {
         Your personal fitness tracking companion
       </p>
     </div>
-  )
+  );
 }
-

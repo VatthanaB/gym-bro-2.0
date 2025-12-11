@@ -1,11 +1,11 @@
-import type { Metadata, Viewport } from "next"
-import "./globals.css"
-import { BottomNav } from "@/components/bottom-nav"
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { BottomNav } from "@/components/bottom-nav";
 
 export const metadata: Metadata = {
-  title: "Gym Buddy",
+  title: "Gym Bro",
   description: "Your personal gym trainer and fitness companion",
-}
+};
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -16,21 +16,19 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-background antialiased">
-        <main className="mx-auto min-h-screen max-w-lg pb-24">
-          {children}
-        </main>
+        <main className="mx-auto min-h-screen max-w-lg pb-24">{children}</main>
         <BottomNav />
       </body>
     </html>
-  )
+  );
 }
