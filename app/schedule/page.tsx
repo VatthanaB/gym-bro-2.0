@@ -16,6 +16,7 @@ import {
   useUserWorkoutCustomizations,
   getWeekStart,
 } from "@/lib/hooks/use-supabase";
+import type { CardioType } from "@/lib/types";
 
 // Get a date offset by a number of weeks from today
 function getWeekStartOffset(weeksOffset: number): string {
@@ -82,6 +83,7 @@ export default function SchedulePage() {
     swapExercise,
     addExercise,
     removeAddedExercise,
+    setCardioCustomization,
     resetDayCustomizations,
     getCustomizedWorkout,
     hasCustomizations,
@@ -172,6 +174,10 @@ export default function SchedulePage() {
 
   const handleRemoveAddedExercise = (exerciseId: string) => {
     removeAddedExercise(selectedDay, exerciseId);
+  };
+
+  const handleCardioChange = (cardioType: CardioType) => {
+    setCardioCustomization(selectedDay, cardioType);
   };
 
   const handleResetCustomizations = () => {
@@ -345,6 +351,7 @@ export default function SchedulePage() {
             onRemoveAddedExercise={
               canEdit ? handleRemoveAddedExercise : undefined
             }
+            onCardioChange={canEdit ? handleCardioChange : undefined}
             onResetCustomizations={
               canEdit ? handleResetCustomizations : undefined
             }

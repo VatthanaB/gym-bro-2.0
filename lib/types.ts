@@ -2,7 +2,7 @@
 export type ExerciseCategory = "big" | "medium" | "small"
 export type MuscleGroup = "push" | "pull" | "squat" | "hinge" | "isolation" | "calves"
 export type DayType = "upper" | "lower" | "cardio" | "rest"
-export type CardioType = "elliptical" | "incline_walk" | "stair_climber" | "hiit" | "ebike"
+export type CardioType = "elliptical" | "incline_walk" | "stair_climber" | "hiit"
 
 // Base Exercise Definition
 export interface Exercise {
@@ -142,5 +142,14 @@ export interface DailyMealPlan {
 
 export interface UserMealPreferences {
   customMeals: Record<MealSlot, Food[]> // user's swapped foods per slot
+}
+
+// Workout Customization Types
+export interface WorkoutCustomization {
+  dayOfWeek: number;
+  weekStart: string;
+  swappedExercises: Array<{ originalId: string; replacementId: string }>;
+  addedExercises: string[];
+  cardioCustomization?: CardioType;
 }
 

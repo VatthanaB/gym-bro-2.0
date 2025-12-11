@@ -6,7 +6,6 @@ import type { User } from "@supabase/supabase-js";
 import type {
   Exercise,
   ExerciseLog,
-  SetLog,
   WorkoutLog,
   WeightEntry,
   UserProfile,
@@ -14,9 +13,11 @@ import type {
   Meal,
   MealSlot,
   DayType,
+  CardioType,
   CardioTemplate,
   WorkoutTemplate,
 } from "@/lib/types";
+import { getDefaultCardioTemplate } from "@/lib/data/workouts";
 
 // =============================================
 // AUTH HOOK
@@ -1139,6 +1140,7 @@ export interface WorkoutCustomization {
   weekStart: string;
   swappedExercises: SwappedExercise[];
   addedExercises: string[];
+  cardioCustomization?: CardioType;
 }
 
 interface DBWorkoutCustomization {
@@ -1148,6 +1150,7 @@ interface DBWorkoutCustomization {
   week_start: string;
   swapped_exercises: SwappedExercise[];
   added_exercises: string[];
+  cardio_customization?: string;
 }
 
 // Helper to get the start of a week (Sunday) for a given date
@@ -1197,6 +1200,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
           weekStart: c.week_start,
           swappedExercises: c.swapped_exercises || [],
           addedExercises: c.added_exercises || [],
+          cardioCustomization: c.cardio_customization as CardioType | undefined,
         };
       });
 
@@ -1229,6 +1233,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
             week_start: weekStart,
             swapped_exercises: newSwaps,
             added_exercises: existing?.addedExercises || [],
+            cardio_customization: existing?.cardioCustomization || null,
           },
           {
             onConflict: "user_id,day_of_week,week_start",
@@ -1247,6 +1252,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
           weekStart,
           swappedExercises: newSwaps,
           addedExercises: existing?.addedExercises || [],
+          cardioCustomization: existing?.cardioCustomization,
         },
       }));
     },
@@ -1274,6 +1280,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
             week_start: weekStart,
             swapped_exercises: existing?.swappedExercises || [],
             added_exercises: newAdded,
+            cardio_customization: existing?.cardioCustomization || null,
           },
           {
             onConflict: "user_id,day_of_week,week_start",
@@ -1292,6 +1299,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
           weekStart,
           swappedExercises: existing?.swappedExercises || [],
           addedExercises: newAdded,
+          cardioCustomization: existing?.cardioCustomization,
         },
       }));
     },
@@ -1318,6 +1326,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
             week_start: weekStart,
             swapped_exercises: existing.swappedExercises,
             added_exercises: newAdded,
+            cardio_customization: existing.cardioCustomization || null,
           },
           {
             onConflict: "user_id,day_of_week,week_start",
@@ -1334,6 +1343,47 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
         [dayOfWeek]: {
           ...existing,
           addedExercises: newAdded,
+        },
+      }));
+    },
+    [user, supabase, weekStart, customizations]
+  );
+
+  const setCardioCustomization = useCallback(
+    async (dayOfWeek: number, cardioType: CardioType) => {
+      if (!user) return;
+
+      const existing = customizations[dayOfWeek];
+
+      const { error } = await supabase
+        .from("user_workout_customizations")
+        .upsert(
+          {
+            user_id: user.id,
+            day_of_week: dayOfWeek,
+            week_start: weekStart,
+            swapped_exercises: existing?.swappedExercises || [],
+            added_exercises: existing?.addedExercises || [],
+            cardio_customization: cardioType,
+          },
+          {
+            onConflict: "user_id,day_of_week,week_start",
+          }
+        );
+
+      if (error) {
+        console.error("Error setting cardio customization:", error);
+        return;
+      }
+
+      setCustomizations((prev) => ({
+        ...prev,
+        [dayOfWeek]: {
+          dayOfWeek,
+          weekStart,
+          swappedExercises: existing?.swappedExercises || [],
+          addedExercises: existing?.addedExercises || [],
+          cardioCustomization: cardioType,
         },
       }));
     },
@@ -1394,7 +1444,13 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
 
       exercises = [...exercises, ...addedExercises];
 
-      return { ...template, exercises };
+      // Apply cardio customization if present
+      let cardio = template.cardio;
+      if (customization.cardioCustomization && template.cardio) {
+        cardio = getDefaultCardioTemplate(customization.cardioCustomization);
+      }
+
+      return { ...template, exercises, cardio };
     },
     [customizations]
   );
@@ -1411,7 +1467,9 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
       const c = customizations[dayOfWeek];
       return !!(
         c &&
-        (c.swappedExercises.length > 0 || c.addedExercises.length > 0)
+        (c.swappedExercises.length > 0 ||
+          c.addedExercises.length > 0 ||
+          c.cardioCustomization !== undefined)
       );
     },
     [customizations]
@@ -1422,6 +1480,7 @@ export function useUserWorkoutCustomizations(selectedWeekStart?: string) {
     swapExercise,
     addExercise,
     removeAddedExercise,
+    setCardioCustomization,
     resetDayCustomizations,
     getCustomizedWorkout,
     getDayCustomization,

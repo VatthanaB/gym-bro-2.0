@@ -9,14 +9,16 @@ import {
   Plus,
   RotateCcw,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExerciseItem } from "@/components/exercise-item";
 import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
 import { AddExerciseSheet } from "@/components/add-exercise-sheet";
+import { CardioSelectSheet } from "@/components/cardio-select-sheet";
 import { cn } from "@/lib/utils";
-import type { WorkoutTemplate, Exercise } from "@/lib/types";
+import type { WorkoutTemplate, Exercise, CardioType } from "@/lib/types";
 
 // Extended exercise type with customization markers
 interface CustomizedExercise extends Exercise {
@@ -34,6 +36,7 @@ interface WorkoutCardProps {
   onSwapExercise?: (originalId: string, replacementId: string) => void;
   onAddExercise?: (exerciseId: string) => void;
   onRemoveAddedExercise?: (exerciseId: string) => void;
+  onCardioChange?: (cardioType: CardioType) => void;
   onResetCustomizations?: () => void;
   editable?: boolean;
 }
@@ -53,11 +56,13 @@ export function WorkoutCard({
   onSwapExercise,
   onAddExercise,
   onRemoveAddedExercise,
+  onCardioChange,
   onResetCustomizations,
   editable = false,
 }: WorkoutCardProps) {
   const [swapSheetOpen, setSwapSheetOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [cardioSheetOpen, setCardioSheetOpen] = useState(false);
   const [exerciseToSwap, setExerciseToSwap] = useState<Exercise | null>(null);
 
   const style = typeStyles[workout.type] || typeStyles.rest;
@@ -230,7 +235,17 @@ export function WorkoutCard({
 
           {/* Cardio Section */}
           {showCardio && workout.cardio && (
-            <div className="rounded-2xl bg-primary/5 p-4">
+            <div
+              className={cn(
+                "rounded-2xl bg-primary/5 p-4",
+                editable &&
+                  onCardioChange &&
+                  "cursor-pointer hover:bg-primary/10 transition-colors"
+              )}
+              onClick={() =>
+                editable && onCardioChange && setCardioSheetOpen(true)
+              }
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Flame className="h-4 w-4 text-primary" />
@@ -238,9 +253,14 @@ export function WorkoutCard({
                     Cardio
                   </h4>
                 </div>
-                <span className="text-sm font-medium text-foreground">
-                  {workout.cardio.durationMinutes} min
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">
+                    {workout.cardio.durationMinutes} min
+                  </span>
+                  {editable && onCardioChange && (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
               </div>
               <p className="mt-2 font-medium text-foreground capitalize">
                 {workout.cardio.type.replace("_", " ")}
@@ -251,6 +271,11 @@ export function WorkoutCard({
               {workout.cardio.notes && (
                 <p className="mt-2 text-xs text-muted-foreground">
                   {workout.cardio.notes}
+                </p>
+              )}
+              {editable && onCardioChange && (
+                <p className="mt-2 text-xs text-primary">
+                  Tap to change cardio type
                 </p>
               )}
             </div>
@@ -281,6 +306,16 @@ export function WorkoutCard({
         currentWorkoutExerciseIds={currentExerciseIds}
         onAddExercise={handleAddExercise}
       />
+
+      {/* Cardio Select Sheet */}
+      {onCardioChange && (
+        <CardioSelectSheet
+          isOpen={cardioSheetOpen}
+          onClose={() => setCardioSheetOpen(false)}
+          currentCardioType={workout.cardio?.type}
+          onSelectCardio={onCardioChange}
+        />
+      )}
     </>
   );
 }

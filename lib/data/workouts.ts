@@ -1,4 +1,4 @@
-import type { WorkoutTemplate, CardioTemplate } from "@/lib/types"
+import type { WorkoutTemplate, CardioTemplate, CardioType } from "@/lib/types"
 import { upperBodyExercises, lowerBodyExercises } from "./exercises"
 
 // Default cardio options
@@ -153,5 +153,40 @@ export function getWorkoutByDay(dayOfWeek: number): WorkoutTemplate | undefined 
 // Get all training days (non-rest days)
 export function getTrainingDays(): WorkoutTemplate[] {
   return weeklySchedule.filter((w) => w.type !== "rest")
+}
+
+// Get default cardio template for a given cardio type
+export function getDefaultCardioTemplate(type: CardioType): CardioTemplate {
+  const templates: Record<CardioType, CardioTemplate> = {
+    elliptical: {
+      type: "elliptical",
+      durationMinutes: 15,
+      intensity: "Moderate pace (can talk but slightly breathless)",
+      rpe: "6-7/10",
+      notes: "Use arms actively",
+    },
+    incline_walk: {
+      type: "incline_walk",
+      durationMinutes: 15,
+      intensity: "5-6 km/h, 5-10% incline",
+      rpe: "5-6/10",
+      notes: "No handrails, stand tall",
+    },
+    stair_climber: {
+      type: "stair_climber",
+      durationMinutes: 12,
+      intensity: "Moderate pace",
+      rpe: "7/10",
+      notes: "Only after upper body days, stand upright",
+    },
+    hiit: {
+      type: "hiit",
+      durationMinutes: 25,
+      intensity: "30 sec on / 30 sec off × 20 rounds",
+      rpe: "8/10 during work, 4/10 during rest",
+      notes: "High intensity interval training",
+    },
+  };
+  return templates[type];
 }
 
